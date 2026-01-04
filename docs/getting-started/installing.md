@@ -14,7 +14,7 @@ This allows the running MQTTSubscribe in simulation mode to debug prior to runni
 To install version 3.x with WeeWX 5.x see, [Installing and updating version 3.x with WeeWX 5.x](https://github.com/weewx-mqtt/subscribe/blob/master/README.md#initial-installation).
 
 To install version 3.x with WeeWX 4.x see,
-[Installing and updating version 3.x with WeeWX 4.x](https://github.com/weewx-mqtt/subscribe/wiki/Installing-and-updating-version-3.x--with-WeeWX-4.x).
+[Installing and updating version 3.x with WeeWX 4.x]({{site.baseurl}}/reference/installing-and-updating-version-3.x--with-weewx-4.x).
 
 To install version 2.x and prior see,
-[Installing and Updating Version 2.X and Earlier](https://github.com/weewx-mqtt/subscribe/wiki/Installing-and-updating-version-2.x-and-earlier).
+[Installing and Updating Version 2.X and Earlier]({{site.baseurl}}/reference/installing-and-updating-version-2.x-and-earlier).
