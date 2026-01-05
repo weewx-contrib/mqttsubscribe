@@ -38,10 +38,10 @@ It can be controlled more granularly by setting adjust_end_time to the number of
 ## Installation notes
 
 **To install version 2.x and prior see,
-[Installing and Updating Version 2.X and Earlier](https://github.com/weewx-mqtt/subscribe/wiki/Installing-and-updating-version-2.x-and-earlier).**
+[Installing and Updating Version 2.X and Earlier](https://weewx-mqtt.github.io/subscribe/reference/installing-and-updating-version-2.x-and-earlier).**
 
 **To install version 3.x with WeeWX 4.x see,
-[Installing and updating version 3.x with WeeWX 4.x](https://github.com/weewx-mqtt/subscribe/wiki/Installing-and-updating-version-3.x--with-WeeWX-4.x)**
+[Installing and updating version 3.x with WeeWX 4.x](https://weewx-mqtt.github.io/subscribe/reference/installing-and-updating-version-3.x--with-weewx-4.x)**
 
 **Note:** It is rare that MQTTSubscribe should be configured to run as both a `service` and `driver`.
 If you are augmenting an existing driver's data, run MQTTSubscribe as a `service`. Otherwise, run it as a `driver`.
@@ -173,9 +173,9 @@ Edit the `mqttsubscribe.template.conf` file
     python3 $USER_ROOT/mqttsubscribe.py simulate $RUN_MODE --conf mqttsubscribe.template.conf
     ```
 
-  Additional information on running MQTTSubscribe in configuration mode can be found at this [wiki page](https://github.com/weewx-mqtt/subscribe/wiki/Configurator-Mode).
+  Additional information on running MQTTSubscribe in configuration mode can be found at this [page](https://weewx-mqtt.github.io/subscribe/configurator-mode/).
   
-  Additional information on running MQTTSubscribe in simulation mode can be found at this [wiki page](https://github.com/weewx-mqtt/subscribe/wiki/Simulator-mode).
+  Additional information on running MQTTSubscribe in simulation mode can be found at this [page](https://weewx-mqtt.github.io/subscribe/simulator-mode/).
   
 ### Stop WeeWX
 
@@ -234,7 +234,7 @@ python3 $USER_ROOT/mqttsubscribe.py configure service --enable true --conf mqtts
 
 ## Debugging
 
-See, [debugging](https://github.com/weewx-mqtt/subscribe/wiki/Debugging).
+See, [debugging](https://weewx-mqtt.github.io/subscribe/debugging).
 
 ## Getting Help
 
