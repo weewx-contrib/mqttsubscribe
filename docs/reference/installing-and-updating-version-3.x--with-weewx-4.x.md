@@ -100,9 +100,9 @@ Note, MQTTSubscribeDriver can also be configured and weewx.conf updated interact
     PYTHONPATH=$BIN_ROOT python3 $USER_ROOT/MQTTSubscribe.py simulate $RUN_MODE --conf mqttsubscribe.template.conf
     ```
 
-  Additional information on running MQTTSubscribe in configuration mode can be found at this [wiki page]({{site.baseurl}}/configurator-mode).
+  Additional information on running MQTTSubscribe in configuration mode can be found at this [page]({{site.baseurl}}/configurator-mode).
   
-  Additional information on running MQTTSubscribe in simulation mode can be found at this [wiki page]({{site.baseurl}}/simulator-mode).
+  Additional information on running MQTTSubscribe in simulation mode can be found at this [page]({{site.baseurl}}/simulator-mode).
 
 ## If running as a driver, set driver to MQTTSubcribe
 
