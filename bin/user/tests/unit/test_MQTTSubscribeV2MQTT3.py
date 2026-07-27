@@ -125,7 +125,7 @@ class TestCallbacks(unittest.TestCase):
 
                     SUT._on_log(None, None, level, msg)
 
-                    SUT.logger.info.assert_called_with(f"MQTTSubscribe MQTT: {msg}")
+                    SUT.logger.info.assert_called_with(None, f"MQTTSubscribe MQTT: {msg}")
 
     def test_mqtt_log_set(self):
         mock_logger = mock.Mock(spec=Logger)
