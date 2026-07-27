@@ -2494,7 +2494,7 @@ class MQTTSubscriberV2MQTT3(MQTTSubscriber):
         self.logger.info(72004, MQTTSubscriberV2MQTT3.msgX[72004].format(mid=mid, size=len(reason_codes), reason_code=reason_codes[0].value))
 
     def _on_log(self, _client, _userdata, level, msg):
-        self.mqtt_logger[level](f"MQTTSubscribe MQTT: {msg}")
+        self.mqtt_logger[level](None, f"MQTTSubscribe MQTT: {msg}")
 
     def _on_message(self, _client, _userdata, msg):
         self.callback(msg)
@@ -2550,7 +2550,7 @@ class MQTTSubscriberV2(MQTTSubscriber):
         self.logger.info(82004, MQTTSubscriberV2.msgX[82004].format(mid=mid, size=len(reason_codes), rc=reason_codes[0].value))
 
     def _on_log(self, _client, _userdata, level, msg):
-        self.mqtt_logger[level](f"MQTTSubscribe MQTT: {msg}")
+        self.mqtt_logger[level](None, f"MQTTSubscribe MQTT: {msg}")
 
     def _on_message(self, _client, _userdata, msg):
         self.callback(msg)
