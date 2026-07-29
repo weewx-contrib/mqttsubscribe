@@ -3,9 +3,11 @@ Enhancements:
 - Rename MQTTSubscribe.py to mqttsubscribe.py (improved maintainability).
 - Name the threads that are created.
 - Move wiki to github pages.
+- Named the created threads (easier to debug).
 
 Fixes:
 - Interactive reconfigure of MQTTSubscribeDriver (#13).
+- MQTT logging.
 
 Build Improvements:
 - Remove old build code.
