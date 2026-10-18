@@ -587,7 +587,7 @@ DRIVER_VERSION = VERSION
 class ConversionError(ValueError):
     """ Error converting data types. """
 
-class Logger():
+class Logger():  # pylint: disable=too-many-instance-attributes
     """ The logging class. """
     # This is the timestamp of the archive record being processed.
     # It is 'captured' via the NEW_ARCHIVE_RECORD event but due to WeeWX processing, updated via the END_ARCHIVE_PERIOD.
@@ -1028,7 +1028,7 @@ class CollectData():
             self.data['dateTime'] = self.date_time
         return self.data
 
-class TopicManager():
+class TopicManager():  # pylint: disable=too-many-instance-attributes
     """ Manage the MQTT topic subscriptions. """
     msgX = {
         # trace message
@@ -2084,7 +2084,7 @@ class ManageWeewxConfig():
             for observation in observations.keys():
                 weewx.units.obs_group_dict.extend({observation: observations[observation]})
 
-class MQTTSubscriber():
+class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
     """ Manage MQTT sunscriptions. """
     msgX = {
         # trace message
