@@ -737,19 +737,25 @@ class Logger():  # pylint: disable=too-many-instance-attributes
             return False
 
         if throttle_config['duration'] == 0:
-            if msg_id not in self.logged_ids:
-                self.logged_ids[msg_id] = {}
-                self.logged_ids[msg_id]['count'] = 0
+            return self._check_message_duration_zero(msg_id, throttle_config)
 
-            if self.logged_ids[msg_id]['count'] > throttle_config['max']:
-                if self.logged_ids[msg_id]['count'] % throttle_config['max'] == 0:
-                    self.logged_ids[msg_id]['count'] += 1
-                    self.error(None, Logger.msgX[124002].format(count=self.logged_ids[msg_id]['count'], max=throttle_config['max']))
-                    return False
+        return self._check_message_window(msg_id, throttle_config)
 
-            self.logged_ids[msg_id]['count'] += 1
-            return True
+    def _check_message_duration_zero(self, msg_id, throttle_config):
+        if msg_id not in self.logged_ids:
+            self.logged_ids[msg_id] = {}
+            self.logged_ids[msg_id]['count'] = 0
 
+        if self.logged_ids[msg_id]['count'] > throttle_config['max']:
+            if self.logged_ids[msg_id]['count'] % throttle_config['max'] == 0:
+                self.logged_ids[msg_id]['count'] += 1
+                self.error(None, Logger.msgX[124002].format(count=self.logged_ids[msg_id]['count'], max=throttle_config['max']))
+                return False
+
+        self.logged_ids[msg_id]['count'] += 1
+        return True
+
+    def _check_message_window(self, msg_id, throttle_config):
         now = int(time.time())
         window = int(now // throttle_config['duration'])
 
@@ -778,18 +784,24 @@ class Logger():  # pylint: disable=too-many-instance-attributes
             return False
 
         if throttle_config['duration'] == 0:
-            if msg_id not in self.logged_ids:
-                self.logged_ids[msg_id] = {}
-                self.logged_ids[msg_id]['count'] = 0
+            return self._check_message_sliding_duration_zero(msg_id, throttle_config)
 
-            if self.logged_ids[msg_id]['count'] % throttle_config['max'] == 0:
-                self.logged_ids[msg_id]['count'] += 1
-                self.error(None, Logger.msgX[124002].format(count=self.logged_ids[msg_id]['count'], max=throttle_config['max']))
-                return False
+        return self._check_message_sliding_window(msg_id, throttle_config)
 
+    def _check_message_sliding_duration_zero(self, msg_id, throttle_config):  # Currently not being used - pragma: no cover
+        if msg_id not in self.logged_ids:
+            self.logged_ids[msg_id] = {}
+            self.logged_ids[msg_id]['count'] = 0
+
+        if self.logged_ids[msg_id]['count'] % throttle_config['max'] == 0:
             self.logged_ids[msg_id]['count'] += 1
-            return True
+            self.error(None, Logger.msgX[124002].format(count=self.logged_ids[msg_id]['count'], max=throttle_config['max']))
+            return False
 
+        self.logged_ids[msg_id]['count'] += 1
+        return True
+
+    def _check_message_sliding_window(self, msg_id, throttle_config):  # Currently not being used - pragma: no cover
         now = int(time.time())
         window = int(now // throttle_config['duration'])
 
