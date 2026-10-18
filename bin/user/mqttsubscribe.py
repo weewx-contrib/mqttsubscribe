@@ -572,7 +572,7 @@ if user_root is not None:
 # This is the timestamp of the achive record being processed.
 # It is 'captured' via the NEW_ARCHIVE_RECORD event but due to WeeWX processing, updated via the END_ARCHIVE_PERIOD.
 # It is added to every log message.
-global_archive_timestamp = -1
+GLOBAL_ARCHIVE_TIMESTAMP = -1
 
 import weeutil
 import weeutil.logger
@@ -703,9 +703,9 @@ class Logger():
             return False
         elif msg_id in self.throttle_config['message']:
             return self._check_message(msg_id, self.throttle_config['message'][msg_id])
-        elif logging_level in self.throttle_config['category']:
+        if logging_level in self.throttle_config['category']:
             return self._check_message(msg_id, self.throttle_config['category'][logging_level])
-        elif 'ALL' in self.throttle_config['category']:
+        if 'ALL' in self.throttle_config['category']:
             return self._check_message(msg_id, self.throttle_config['category']['ALL'])
 
         return False
@@ -834,24 +834,24 @@ class Logger():
         """ Log trace messages. """
         if not self._is_throttled('TRACE', msg_id):
             if self.weewx_debug > 1:
-                self._logmsg.debug(self.MSG_FORMAT, self.mode, threading.get_native_id(), global_archive_timestamp, msg_text)
+                self._logmsg.debug(self.MSG_FORMAT, self.mode, threading.get_native_id(), GLOBAL_ARCHIVE_TIMESTAMP, msg_text)
             else:
-                self._logmsg.log(self.trace_level, self.MSG_FORMAT, self.mode, threading.get_native_id(), global_archive_timestamp, msg_text)
+                self._logmsg.log(self.trace_level, self.MSG_FORMAT, self.mode, threading.get_native_id(), GLOBAL_ARCHIVE_TIMESTAMP, msg_text)
 
     def debug(self, msg_id, msg_text):
         """ Log debug messages. """
         if not self._is_throttled('DEBUG', msg_id):
-            self._logmsg.debug(self.MSG_FORMAT, self.mode, threading.get_native_id(), global_archive_timestamp, msg_text)
+            self._logmsg.debug(self.MSG_FORMAT, self.mode, threading.get_native_id(), GLOBAL_ARCHIVE_TIMESTAMP, msg_text)
 
     def info(self, msg_id, msg_text):
         """ Log informational messages. """
         if not self._is_throttled('INFO', msg_id):
-            self._logmsg.info(self.MSG_FORMAT, self.mode, threading.get_native_id(), global_archive_timestamp, msg_text)
+            self._logmsg.info(self.MSG_FORMAT, self.mode, threading.get_native_id(), GLOBAL_ARCHIVE_TIMESTAMP, msg_text)
 
     def error(self, msg_id, msg_text):
         """ Log error messages. """
         if not self._is_throttled('ERROR', msg_id):
-            self._logmsg.error(self.MSG_FORMAT, self.mode, threading.get_native_id(), global_archive_timestamp, msg_text)
+            self._logmsg.error(self.MSG_FORMAT, self.mode, threading.get_native_id(), GLOBAL_ARCHIVE_TIMESTAMP, msg_text)
 
 class RecordCache():
     """ Manage the cache. """
@@ -1451,8 +1451,7 @@ class TopicManager():
         if self.collect_observations:
             observation_collector = CollectData(None, self.collected_units)
 
-        for data in self._process_queue(end_ts, collector, observation_collector, queue):
-            yield data
+        yield from self._process_queue(end_ts, collector, observation_collector, queue)
 
         if not self.collect_wind_across_loops:
             data = collector.get_data()
@@ -2714,8 +2713,8 @@ class MQTTSubscribeService(StdService):
 
     def end_archive_period(self, _event):
         """ Handle the end archive period event."""
-        global global_archive_timestamp
-        global_archive_timestamp = self.next_archive_timestamp
+        global GLOBAL_ARCHIVE_TIMESTAMP
+        GLOBAL_ARCHIVE_TIMESTAMP = self.next_archive_timestamp
 
 def loader(config_dict, engine):
     """ Load and return the driver. """
@@ -2809,8 +2808,8 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
 
     def end_archive_period(self, _event):
         """ Handle the end archive period event."""
-        global global_archive_timestamp
-        global_archive_timestamp = self.next_archive_timestamp
+        global GLOBAL_ARCHIVE_TIMESTAMP
+        GLOBAL_ARCHIVE_TIMESTAMP = self.next_archive_timestamp
 
     def genLoopPackets(self):  # need to override parent - pylint: disable=invalid-name
         """ Called to generate loop packets. """

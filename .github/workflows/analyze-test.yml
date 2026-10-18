@@ -12,6 +12,8 @@ jobs:
       pip-list: 'paho-mqtt'
       package-list: 'mosquitto'
       latest-weewx-version: '5.5.2'
+      lint-paths: './bin/user/mqttsubscribe.py'
+      lint-fail: false # TODO: re-enable lint-fail once the lint fixes are complete
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
