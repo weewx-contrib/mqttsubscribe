@@ -569,11 +569,6 @@ user_root = os.getenv('USER_ROOT')
 if user_root is not None:
     sys.path.append(user_root + '/..')
 
-# This is the timestamp of the achive record being processed.
-# It is 'captured' via the NEW_ARCHIVE_RECORD event but due to WeeWX processing, updated via the END_ARCHIVE_PERIOD.
-# It is added to every log message.
-GLOBAL_ARCHIVE_TIMESTAMP = -1
-
 import weeutil
 import weeutil.logger
 from weeutil.weeutil import to_bool, to_float, to_int, to_sorted_string
@@ -594,6 +589,10 @@ class ConversionError(ValueError):
 
 class Logger():
     """ The logging class. """
+    # This is the timestamp of the archive record being processed.
+    # It is 'captured' via the NEW_ARCHIVE_RECORD event but due to WeeWX processing, updated via the END_ARCHIVE_PERIOD.
+    # It is added to every log message.
+    archive_timestamp = -1
     msgX = {
         # trace message
         # debug messages
@@ -623,45 +622,7 @@ class Logger():
         self.weewx_debug = weewx.debug
 
         self.logged_ids = {}
-        self.throttle_config = {}
-        if 'throttle' in config:
-            self.throttle_config['category'] = {}
-            if 'category' in config['throttle']:
-                for category in config['throttle']['category'].sections:
-                    if category not in Logger.valid_categories:
-                        raise ValueError(Logger.msgX[129003].format(category=category, valid_categories=Logger.valid_categories))
-                    self.throttle_config['category'][category] = config['throttle']['category'][category]
-                    if 'max' not in config['throttle']['category'][category]:
-                        raise ValueError(Logger.msgX[129004].format(category=category))
-                    if 'duration' not in config['throttle']['category'][category]:
-                        raise ValueError(Logger.msgX[129005].format(category=category))
-                    config['throttle']['category'][category]['max'] = to_int(config['throttle']['category'][category]['max'])
-                    config['throttle']['category'][category]['duration'] = to_int(config['throttle']['category'][category]['duration'])
-
-            self.throttle_config['message'] = {}
-            for message in config['throttle'].get('messages', configobj.ConfigObj({})).sections:
-                if 'max' not in config['throttle']['messages'][message]:
-                    raise ValueError(Logger.msgX[129006].format(message=message))
-                if 'duration' not in config['throttle']['messages'][message]:
-                    raise ValueError(Logger.msgX[129007].format(message=message))
-                if 'messages' in config['throttle']['messages'][message]:
-                    for message_id in weeutil.weeutil.option_as_list(config['throttle']['messages'][message]['messages']):
-                        message_id_int = to_int(message_id)
-                        if message_id_int in self.throttle_config['message']:
-                            raise ValueError(Logger.msgX[129001].format(message_id=message_id))
-                        self.throttle_config['message'][message_id_int] = {}
-                        self.throttle_config['message'][message_id_int]['duration'] = to_int(config['throttle']['messages'][message]['duration'])
-                        self.throttle_config['message'][message_id_int]['max'] = to_int(config['throttle']['messages'][message]['max'])
-                else:
-                    message_id_int = to_int(message)
-                    if message_id_int in self.throttle_config['message']:
-                        raise ValueError(Logger.msgX[129002].format(message_id=message))
-                    self.throttle_config['message'][message_id_int] = {}
-                    self.throttle_config['message'][message_id_int]['duration'] = to_int(config['throttle']['messages'][message]['duration'])
-                    self.throttle_config['message'][message_id_int]['max'] = to_int(config['throttle']['messages'][message]['max'])
-        else:
-            self.throttle_config['category'] = {}
-            self.throttle_config['message'] = {}
+        self.throttle_config = self._parse_throttle_config(config)
 
         # Setup custom TRACE level
         self.trace_level = 5
@@ -672,6 +633,71 @@ class Logger():
         self.level = logging._checkLevel(level)
 
         self._logmsg = logging.getLogger(__name__)
+        self._setup_logging()
+
+        # Logging is setup, now safe to log a mwssage about using throttling option
+        if 'throttle' in config:
+            self.info(122001, Logger.msgX[122001])
+
+    def _parse_throttle_config(self, config):
+        """ Parse the 'throttle' section of the config into the internal representation. """
+        throttle_config = {'category': {}, 'message': {}}
+
+        if 'throttle' in config:
+            throttle_config['category'] = self._parse_throttle_categories(config['throttle'])
+            throttle_config['message'] = self._parse_throttle_messages(config['throttle'])
+
+        return throttle_config
+
+    @staticmethod
+    def _parse_throttle_categories(throttle):
+        """ Parse the 'category' section of the throttle config. """
+        categories = {}
+        for category in throttle.get('category', configobj.ConfigObj({})).sections:
+            if category not in Logger.valid_categories:
+                raise ValueError(Logger.msgX[129003].format(category=category, valid_categories=Logger.valid_categories))
+            if 'max' not in throttle['category'][category]:
+                raise ValueError(Logger.msgX[129004].format(category=category))
+            if 'duration' not in throttle['category'][category]:
+                raise ValueError(Logger.msgX[129005].format(category=category))
+            throttle['category'][category]['max'] = to_int(throttle['category'][category]['max'])
+            throttle['category'][category]['duration'] = to_int(throttle['category'][category]['duration'])
+            categories[category] = throttle['category'][category]
+
+        return categories
+
+    def _parse_throttle_messages(self, throttle):
+        """ Parse the 'messages' section of the throttle config. """
+        messages = {}
+        for message in throttle.get('messages', configobj.ConfigObj({})).sections:
+            Logger._validate_throttle_message(throttle['messages'][message], message)
+
+            if 'messages' in throttle['messages'][message]:
+                message_ids = weeutil.weeutil.option_as_list(throttle['messages'][message]['messages'])
+            else:
+                message_ids = [message]
+
+            for message_id in message_ids:
+                message_id_int = to_int(message_id)
+                if message_id_int in messages:
+                    raise ValueError(Logger.msgX[129001].format(message_id=message_id))
+                messages[message_id_int] = {
+                    'duration': to_int(throttle['messages'][message]['duration']),
+                    'max': to_int(throttle['messages'][message]['max'])
+                }
+
+        return messages
+
+    @staticmethod
+    def _validate_throttle_message(message_config, message):
+        """ Validate a 'messages' section of the throttle config. """
+        if 'max' not in message_config:
+            raise ValueError(Logger.msgX[129006].format(message=message))
+        if 'duration' not in message_config:
+            raise ValueError(Logger.msgX[129007].format(message=message))
+
+    def _setup_logging(self):
+        """ Setup the weewx message handlers. """
         if self.console:
             self._logmsg.addHandler(logging.StreamHandler(sys.stdout))
 
@@ -694,14 +720,10 @@ class Logger():
             file_handler.setFormatter(formatter)
             self._logmsg.addHandler(file_handler)
 
-        # Logging is setup, now safe to log a mwssage about using throttling option
-        if 'throttle' in config:
-            self.info(122001, Logger.msgX[122001])
-
     def _is_throttled(self, logging_level, msg_id):
         if msg_id is None:
             return False
-        elif msg_id in self.throttle_config['message']:
+        if msg_id in self.throttle_config['message']:
             return self._check_message(msg_id, self.throttle_config['message'][msg_id])
         if logging_level in self.throttle_config['category']:
             return self._check_message(msg_id, self.throttle_config['category'][logging_level])
@@ -834,24 +856,24 @@ class Logger():
         """ Log trace messages. """
         if not self._is_throttled('TRACE', msg_id):
             if self.weewx_debug > 1:
-                self._logmsg.debug(self.MSG_FORMAT, self.mode, threading.get_native_id(), GLOBAL_ARCHIVE_TIMESTAMP, msg_text)
+                self._logmsg.debug(self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp, msg_text)
             else:
-                self._logmsg.log(self.trace_level, self.MSG_FORMAT, self.mode, threading.get_native_id(), GLOBAL_ARCHIVE_TIMESTAMP, msg_text)
+                self._logmsg.log(self.trace_level, self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp, msg_text)
 
     def debug(self, msg_id, msg_text):
         """ Log debug messages. """
         if not self._is_throttled('DEBUG', msg_id):
-            self._logmsg.debug(self.MSG_FORMAT, self.mode, threading.get_native_id(), GLOBAL_ARCHIVE_TIMESTAMP, msg_text)
+            self._logmsg.debug(self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp, msg_text)
 
     def info(self, msg_id, msg_text):
         """ Log informational messages. """
         if not self._is_throttled('INFO', msg_id):
-            self._logmsg.info(self.MSG_FORMAT, self.mode, threading.get_native_id(), GLOBAL_ARCHIVE_TIMESTAMP, msg_text)
+            self._logmsg.info(self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp, msg_text)
 
     def error(self, msg_id, msg_text):
         """ Log error messages. """
         if not self._is_throttled('ERROR', msg_id):
-            self._logmsg.error(self.MSG_FORMAT, self.mode, threading.get_native_id(), GLOBAL_ARCHIVE_TIMESTAMP, msg_text)
+            self._logmsg.error(self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp, msg_text)
 
 class RecordCache():
     """ Manage the cache. """
@@ -2713,8 +2735,7 @@ class MQTTSubscribeService(StdService):
 
     def end_archive_period(self, _event):
         """ Handle the end archive period event."""
-        global GLOBAL_ARCHIVE_TIMESTAMP
-        GLOBAL_ARCHIVE_TIMESTAMP = self.next_archive_timestamp
+        Logger.archive_timestamp = self.next_archive_timestamp
 
 def loader(config_dict, engine):
     """ Load and return the driver. """
@@ -2808,8 +2829,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
 
     def end_archive_period(self, _event):
         """ Handle the end archive period event."""
-        global GLOBAL_ARCHIVE_TIMESTAMP
-        GLOBAL_ARCHIVE_TIMESTAMP = self.next_archive_timestamp
+        Logger.archive_timestamp = self.next_archive_timestamp
 
     def genLoopPackets(self):  # need to override parent - pylint: disable=invalid-name
         """ Called to generate loop packets. """
