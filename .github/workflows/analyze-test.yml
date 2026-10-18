@@ -6,12 +6,12 @@ on:
 
 jobs:
   analyze-test:
-    uses: weewx-extensions/development-tools/.github/workflows/analyze-test.yml@v5
+    uses: weewx-extensions/development-tools/.github/workflows/analyze-test.yml@v6
     with:
       module-name: 'MQTTSubscribe'
       pip-list: 'paho-mqtt'
       package-list: 'mosquitto'
-      #flake-extra-parms: '--exclude tests'
+      latest-weewx-version: '5.5.2'
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
