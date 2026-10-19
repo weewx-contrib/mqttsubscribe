@@ -1801,22 +1801,26 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
             if topic_manager.subscribed_topics[topic]['queue']['type'] == 'collector':
                 continue
 
-            if config is not None:
-                # backwards compability
-                if not topic_manager.subscribed_topics[topic][topic_manager.message_config_name]:
-                    topic_manager.subscribed_topics[topic][topic_manager.message_config_name] = config.dict()
-                else:
-                    self.logger.info(42001, MessageCallbackProvider.msgX[42001])
+            self._init_topic(topic, config, topic_manager)
 
+    def _init_topic(self, topic, config, topic_manager):
+        ''' Apply backwards compatibility and validate the topic's message configuration. '''
+        if config is not None:
+            # backwards compability
             if not topic_manager.subscribed_topics[topic][topic_manager.message_config_name]:
-                raise ValueError(MessageCallbackProvider.msgX[49001].format(topic=topic))
-            message_type = topic_manager.subscribed_topics[topic][topic_manager.message_config_name].get('type', None)
-            if message_type is None:
-                raise ValueError(MessageCallbackProvider.msgX[49002].format(topic=topic))
-            if message_type not in ['json', 'keyword', 'individual']:
-                raise ValueError(MessageCallbackProvider.msgX[49003].format(message_type=message_type))
+                topic_manager.subscribed_topics[topic][topic_manager.message_config_name] = config.dict()
+            else:
+                self.logger.info(42001, MessageCallbackProvider.msgX[42001])
 
-            self._set_flatten_delimiter(topic, topic_manager)
+        if not topic_manager.subscribed_topics[topic][topic_manager.message_config_name]:
+            raise ValueError(MessageCallbackProvider.msgX[49001].format(topic=topic))
+        message_type = topic_manager.subscribed_topics[topic][topic_manager.message_config_name].get('type', None)
+        if message_type is None:
+            raise ValueError(MessageCallbackProvider.msgX[49002].format(topic=topic))
+        if message_type not in ['json', 'keyword', 'individual']:
+            raise ValueError(MessageCallbackProvider.msgX[49003].format(message_type=message_type))
+
+        self._set_flatten_delimiter(topic, topic_manager)
 
     @staticmethod
     def _set_flatten_delimiter(topic, topic_manager):
@@ -1849,29 +1853,39 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
     def _flatten_list(self, fields, fields_ignore_default, delim, prefix, new_key, *, value, new_dict):
         # pylint: disable=too-many-arguments
         if new_key in fields and 'subfields' in fields[new_key]:
-            if len(value) > len(fields[new_key]['subfields']):
-                self.logger.error(44001, MessageCallbackProvider.msgX[44002].format(new_key=new_key,
-                                                                                    value=value,
-                                                                                    subfields=fields[new_key]['subfields']))
-            elif len(value) < len(fields[new_key]['subfields']):
-                self.logger.error(44002,
-                                  MessageCallbackProvider.msgX[44002].format(new_key=new_key,
-                                                                             value=value,
-                                                                             subfields=fields[new_key]['subfields']))
-            else:
-                i = 0
-                for subvalue in value:
-                    if isinstance(subvalue, (dict, list)):
-                        self._flatten(fields, fields_ignore_default, delim, prefix + fields[new_key]['subfields'][i] + '_',
-                                      new_dict, old_dict=subvalue)
-                    else:
-                        new_dict[prefix + fields[new_key]['subfields'][i]] = subvalue
-                    i += 1
+            if self._check_subfield_count(new_key, value, fields):
+                self._flatten_subfields(fields, fields_ignore_default, delim, prefix, new_key, value=value, new_dict=new_dict)
         elif new_key not in fields and fields_ignore_default:
             pass
         else:
             # if not fields.get(lookup_key, {}).get('ignore', fields_ignore_default):
             self.logger.error(44003, MessageCallbackProvider.msgX[44003].format(new_key=new_key, value=value))
+
+    def _check_subfield_count(self, new_key, value, fields):
+        ''' Verify the array length matches the configured subfields. Returns True when they match. '''
+        if len(value) > len(fields[new_key]['subfields']):
+            self.logger.error(44001, MessageCallbackProvider.msgX[44002].format(new_key=new_key,
+                                                                                value=value,
+                                                                                subfields=fields[new_key]['subfields']))
+            return False
+        if len(value) < len(fields[new_key]['subfields']):
+            self.logger.error(44002,
+                              MessageCallbackProvider.msgX[44002].format(new_key=new_key,
+                                                                         value=value,
+                                                                         subfields=fields[new_key]['subfields']))
+            return False
+        return True
+
+    def _flatten_subfields(self, fields, fields_ignore_default, delim, prefix, new_key, *, value, new_dict):
+        # pylint: disable=too-many-arguments
+        i = 0
+        for subvalue in value:
+            if isinstance(subvalue, (dict, list)):
+                self._flatten(fields, fields_ignore_default, delim, prefix + fields[new_key]['subfields'][i] + '_',
+                              new_dict, old_dict=subvalue)
+            else:
+                new_dict[prefix + fields[new_key]['subfields'][i]] = subvalue
+            i += 1
 
     def _log_message(self, msg):
         self.logger.debug(41001, MessageCallbackProvider.msgX[41001].format(topic=msg.topic,
@@ -1944,6 +1958,13 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
         except Exception as exception:  # (want to catch all) pylint: disable=broad-except
             self._log_exception('on_message_json', exception, msg)
 
+    @staticmethod
+    def _get_lookup_key(key, msg_id, msg_id_field, fields_ignoring_msg_id):
+        ''' Build the lookup key, suffixed with the message id when configured. '''
+        if msg_id_field and key not in fields_ignoring_msg_id:
+            return key + "_" + str(msg_id)  # todo - cleanup
+        return key
+
     def _process_json_dict(self, msg, fields, fields_ignore_default, data_flattened):
         # pylint: disable= too-many-locals
         msg_id_field = self.topic_manager.get_msg_id_field(msg.topic)
@@ -1958,10 +1979,7 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
             msg_id = data_flattened[msg_id_field]
 
         for key, value in data_flattened.items():
-            if msg_id_field and key not in fields_ignoring_msg_id:
-                lookup_key = key + "_" + str(msg_id)  # todo - cleanup
-            else:
-                lookup_key = key
+            lookup_key = self._get_lookup_key(key, msg_id, msg_id_field, fields_ignoring_msg_id)
             if lookup_key in filters and value in filters[lookup_key]:
                 self.logger.info(42002, MessageCallbackProvider.msgX[42002].format(topic=msg.topic,
                                                                                    payload=msg.payload,
