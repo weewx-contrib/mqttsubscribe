@@ -1144,7 +1144,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
 
     def _configure_topics(self, config, archive_topic, single_queue, single_queue_obj, *,
                           default_message_dict, topic_defaults, field_defaults):
-        # pylint: disable=too-many-arguments, too-many-locals
+        # pylint: disable=too-many-arguments
         for topic in config.sections:
             topic_dict = config.get(topic, {})
             callback_config_name = topic_dict.get('callback_config_name', topic_defaults['callback_config_name'])
@@ -1189,7 +1189,6 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
                                           field_defaults=field_defaults)
 
     def _configure_topic_message(self, topic, topic_dict, *, default_message_dict, callback_config_name, field_defaults):
-        # pylint: disable=too-many-arguments
         temp_message_dict = topic_dict.get(callback_config_name, {})
         message_type = temp_message_dict.get('type', None)
 
@@ -1418,7 +1417,6 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         self.subscribed_topics[topic]['filters'].update({fieldname: values})
 
     def _configure_ignore_fields(self, topic_dict, field_dict, topic, fieldname, defaults):
-        # pylint: disable=too-many-arguments, too-many-locals
         ignore_msg_id_field = topic_dict.get('ignore_msg_id_field', defaults['ignore_msg_id_field'])
         if to_bool((field_dict).get('ignore_msg_id_field', ignore_msg_id_field)):
             self.subscribed_topics[topic]['fields_ignoring_msg_id'].append(fieldname)
@@ -1542,7 +1540,6 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
                 yield data
 
     def get_accumulated_data(self, queue, start_time, end_time, units):
-        # pylint: disable=too-many-locals
         """ Get the MQTT data after being accumulated. """
         queue_name = queue['name']
         data_queue = queue['data']
@@ -1728,7 +1725,6 @@ class AbstractMessageCallbackProvider():  # pylint: disable=too-few-public-metho
         raise NotImplementedError(AbstractMessageCallbackProvider.msgX[99001])
 
     def _update_data(self, orig_name, orig_value, fields, default_field_conversion_func, unit_system):
-        # pylint: disable=too-many-arguments
         value = self._convert_value(fields, default_field_conversion_func, orig_name, orig_value)
         fieldname = fields.get(orig_name, {}).get('name', orig_name)
 
@@ -1954,7 +1950,6 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
             self._log_exception('on_message_keyword', exception, msg)
 
     def _on_message_json(self, msg):
-        # pylint: disable=too-many-branches
         # Wrap all the processing in a try, so it doesn't crash and burn on any error
         try:
             self._log_message(msg)
@@ -2312,7 +2307,7 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
         try:
             self.connect(mqtt_options)
-        except Exception as exception:  # (want to catch all) pylint: disable=broad-except
+        except Exception as exception:  # (want to catch all)
             self.logger.error(34001, MQTTSubscriber.msgX[34001].format(host=mqtt_options['host'],
                                                                        port=mqtt_options['port'],
                                                                        exception=exception))
@@ -2473,7 +2468,7 @@ class MQTTSubscriberV1(MQTTSubscriber):
         super().__init__(service_dict, logger)
 
     def get_client(self, mqtt_options):
-        return mqtt.Client(protocol=mqtt_options['protocol'],  # (v1 signature) pylint: disable=no-value-for-parameter
+        return mqtt.Client(protocol=mqtt_options['protocol'],  # (v1 signature)
                            client_id=mqtt_options['clientid'],
                            userdata=self.userdata,
                            clean_session=mqtt_options['clean_session'])
@@ -2714,7 +2709,7 @@ class MQTTSubscribeService(StdService):
         if self.binding == 'loop':
             self.bind(weewx.NEW_LOOP_PACKET, self.new_loop_packet)
 
-    def shutDown(self):  # need to override parent - pylint: disable=invalid-name
+    def shutDown(self):  # need to override parent
         """Run when an engine shutdown is requested."""
         if self.subscriber:
             self.subscriber.disconnect()
@@ -2806,7 +2801,7 @@ def confeditor_loader():
     return MQTTSubscribeDriverConfEditor()  # pragma: no cover
 
 class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
-    # (methods not used) pylint: disable=abstract-method
+    # (getTime/setTime not used) pylint: disable=abstract-method
     # pylint: disable=too-many-instance-attributes
     """weewx driver that reads data from MQTT"""
 
@@ -2877,7 +2872,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
 
         return self._archive_interval
 
-    def closePort(self):  # need to override parent - pylint: disable=invalid-name
+    def closePort(self):  # need to override parent
         """ Called to perform any close/cleanup before termination. """
         self.subscriber.disconnect()
 
@@ -2891,7 +2886,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         """ Handle the end archive period event."""
         Logger.archive_timestamp = self.next_archive_timestamp
 
-    def genLoopPackets(self):  # need to override parent - pylint: disable=invalid-name
+    def genLoopPackets(self):  # need to override parent
         """ Called to generate loop packets. """
         while True:
             packet_count = 0
@@ -2951,7 +2946,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         time.sleep(self.wait_before_retry)
         return None
 
-    def genArchiveRecords(self, lastgood_ts):  # need to override parent - pylint: disable=invalid-name
+    def genArchiveRecords(self, lastgood_ts):  # need to override parent
         """ Called to generate the archive records. """
         if not self.archive_topic:
             self.logger.debug(11004, MQTTSubscribeDriver.msgX[11004])
@@ -3212,7 +3207,7 @@ class MQTTSubscribeConfiguration():
 
     def validate(self, parent, hierarchy, section, *, section_configspec, section_deprecated_options, error_msgs, warn_msgs):
         """ Validate a MQTTSubscribe configuration."""
-        # pylint: disable=too-many-arguments, disable=too-many-branches
+        # pylint: disable=too-many-arguments
         hierarchy += f"{parent}-"
         for key, value in section.items():
             if key in section.sections:
@@ -3810,7 +3805,6 @@ For more information see, https://weewx-mqtt.github.io/subscribe/configurator-mo
         return subparser
 
     def __init__(self, parser, options):
-        # pylint: disable=too-many-branches
         self.no_update_actions = ["--create-example", "--export", "--print-configspec", "--validate"]
         if (options.type and options.create_example) or (not options.type and not options.create_example):
             parser.error("Either 'service|driver' or '--create-example' is required.")
