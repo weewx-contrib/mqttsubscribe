@@ -3820,7 +3820,6 @@ For more information see, https://weewx-mqtt.github.io/subscribe/configurator-mo
         self.config_input_dict = None
         self.config_dict = None
         self.config_output_path = None
-        self.oputput_path = None
         self.action = None
         self.enable = None
 
@@ -3856,7 +3855,6 @@ For more information see, https://weewx-mqtt.github.io/subscribe/configurator-mo
         if options.conf:
             config_path = os.path.abspath(options.conf)
             self.config_dict = configobj.ConfigObj(config_path, encoding='utf-8', file_error=True)
-            self.output_path = config_path
 
         config_input = self._select_action(options)
 
