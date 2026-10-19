@@ -28,6 +28,9 @@ jobs:
       package-list: 'mosquitto'
       latest-weewx-version: '5.5.2'
       lint-paths: './bin/user/mqttsubscribe.py'
+      # pylint cannot validate the v2 API code against paho-mqtt 1.6.1 (E1101/E1123 are false positives),
+      # so this job reports lint findings without failing. The main job is the lint gate.
+      lint-fail: false
       artifact-name-suffix: '-2'
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
