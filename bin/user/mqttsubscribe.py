@@ -1183,23 +1183,30 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
 
             self.subscribed_topics[topic]['filters'] = {}
 
-            temp_message_dict = topic_dict.get(callback_config_name, {})
-            message_type = temp_message_dict.get('type', None)
+            self._configure_topic_message(topic, topic_dict,
+                                          default_message_dict=default_message_dict,
+                                          callback_config_name=callback_config_name,
+                                          field_defaults=field_defaults)
 
-            # ugly "deep" copy workaround
-            message_dict = configobj.ConfigObj({})
-            message_dict.merge(default_message_dict)
+    def _configure_topic_message(self, topic, topic_dict, *, default_message_dict, callback_config_name, field_defaults):
+        # pylint: disable=too-many-arguments
+        temp_message_dict = topic_dict.get(callback_config_name, {})
+        message_type = temp_message_dict.get('type', None)
 
-            # if 'type' option is set, this a 'callback configuration (message)' section
-            # So merge the default message settings
-            if message_type is not None:
-                message_dict.merge(temp_message_dict)
-            self.subscribed_topics[topic][self.message_config_name] = message_dict
+        # ugly "deep" copy workaround
+        message_dict = configobj.ConfigObj({})
+        message_dict.merge(default_message_dict)
 
-            if len(topic_dict.sections) > 1 or (len(topic_dict.sections) == 1 and message_type is None):
-                self. _configure_topic_fields(field_defaults, callback_config_name, topic, topic_dict)
-            else:
-                self._configure_topic_as_field(field_defaults, topic, topic_dict)
+        # if 'type' option is set, this a 'callback configuration (message)' section
+        # So merge the default message settings
+        if message_type is not None:
+            message_dict.merge(temp_message_dict)
+        self.subscribed_topics[topic][self.message_config_name] = message_dict
+
+        if len(topic_dict.sections) > 1 or (len(topic_dict.sections) == 1 and message_type is None):
+            self. _configure_topic_fields(field_defaults, callback_config_name, topic, topic_dict)
+        else:
+            self._configure_topic_as_field(field_defaults, topic, topic_dict)
 
     def _setup_queue(self, archive_topic, single_queue, single_queue_obj, topic_defaults, topic, *, topic_dict):
         # pylint: disable=too-many-arguments
@@ -1377,16 +1384,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         conversion_type = field_dict.get('conversion_type', conversion_type)
         field['conversion_func'] = {}
         field['conversion_type'] = conversion_type  # todo - hack so that a field configuration can be used as a default for its subfields
-        if conversion_func:
-            field['conversion_func']['source'] = conversion_func
-        elif conversion_type == 'bool':
-            field['conversion_func']['source'] = 'lambda x: to_bool(x)'
-        elif conversion_type == 'float':
-            field['conversion_func']['source'] = 'lambda x: to_float(x)'
-        elif conversion_type == 'int':
-            field['conversion_func']['source'] = 'lambda x: to_int(x)'
-        else:
-            field['conversion_func']['source'] = 'lambda x: x'
+        field['conversion_func']['source'] = TopicManager._get_conversion_source(conversion_func, conversion_type)
         field['conversion_func']['compiled'] = eval(field['conversion_func']['source'])  # pylint: disable=eval-used
         field['conversion_error_to_none'] = (field_dict).get('conversion_error_to_none', conversion_error_to_none)
         if 'units' in field_dict:
@@ -1398,6 +1396,19 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         if (field_dict).get('subfields', None):
             field['subfields'] = (field_dict)['subfields'].sections
         return field
+
+    @staticmethod
+    def _get_conversion_source(conversion_func, conversion_type):
+        ''' Select the conversion function source; an explicit conversion_func wins. '''
+        if conversion_func:
+            return conversion_func
+        if conversion_type == 'bool':
+            return 'lambda x: to_bool(x)'
+        if conversion_type == 'float':
+            return 'lambda x: to_float(x)'
+        if conversion_type == 'int':
+            return 'lambda x: to_int(x)'
+        return 'lambda x: x'
 
     def _configure_filter_out_message(self, topic, fieldname, filter_values, conversion_func):
         values = []
@@ -1538,22 +1549,8 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         if not bool(data_queue):
             return {}
 
-        ignore_start_time = queue['ignore_start_time']
         ignore_end_time = queue['ignore_end_time']
-        adjust_start_time = queue['adjust_start_time']
-        adjust_end_time = queue['adjust_end_time']
-
-        if ignore_start_time:
-            self.logger.trace(50008, TopicManager.msgX[50008])
-            start_ts = self.peek_datetime(data_queue) - adjust_start_time
-        else:
-            start_ts = start_time - adjust_start_time
-
-        if ignore_end_time:
-            self.logger.trace(50009, TopicManager.msgX[50009])
-            end_ts = self.peek_last_datetime(data_queue) + adjust_end_time
-        else:
-            end_ts = end_time + adjust_end_time
+        start_ts, end_ts = self._get_accumulation_window(queue, start_time, end_time)
 
         self.logger.trace(50010, TopicManager.msgX[50010].format(start_ts=start_ts, end_ts=end_ts))
         accumulator = weewx.accum.Accum(weeutil.weeutil.TimeSpan(start_ts, end_ts))
@@ -1589,6 +1586,26 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
 
         self.logger.debug(51011, TopicManager.msgX[51011].format(queue_name=queue_name, target_data=to_sorted_string(target_data)))
         return target_data
+
+    def _get_accumulation_window(self, queue, start_time, end_time):
+        ''' Resolve the accumulation window, honoring the queue's ignore and adjust settings. '''
+        data_queue = queue['data']
+        adjust_start_time = queue['adjust_start_time']
+        adjust_end_time = queue['adjust_end_time']
+
+        if queue['ignore_start_time']:
+            self.logger.trace(50008, TopicManager.msgX[50008])
+            start_ts = self.peek_datetime(data_queue) - adjust_start_time
+        else:
+            start_ts = start_time - adjust_start_time
+
+        if queue['ignore_end_time']:
+            self.logger.trace(50009, TopicManager.msgX[50009])
+            end_ts = self.peek_last_datetime(data_queue) + adjust_end_time
+        else:
+            end_ts = end_time + adjust_end_time
+
+        return start_ts, end_ts
 
     def _queue_size_check(self, queue, max_queue):
         while len(queue) >= max_queue:
