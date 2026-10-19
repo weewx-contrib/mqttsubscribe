@@ -1118,17 +1118,16 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         self.logger.debug(51001, TopicManager.msgX[51001].format(single_queue=single_queue))
         single_queue_obj = None
         if single_queue:
-            single_queue_obj = dict(
-                {'name': f"{time.time():f}-single-queue",
-                 'type': 'normal',
-                 'ignore_start_time': topic_defaults['ignore_start_time'],
-                 'ignore_end_time': topic_defaults['ignore_end_time'],
-                 'adjust_start_time': topic_defaults['adjust_start_time'],
-                 'adjust_end_time': topic_defaults['adjust_end_time'],
-                 'max_size': topic_defaults['max_queue'],
-                 'data': deque()
-                 }
-            )
+            single_queue_obj = {
+                'name': f"{time.time():f}-single-queue",
+                'type': 'normal',
+                'ignore_start_time': topic_defaults['ignore_start_time'],
+                'ignore_end_time': topic_defaults['ignore_end_time'],
+                'adjust_start_time': topic_defaults['adjust_start_time'],
+                'adjust_end_time': topic_defaults['adjust_end_time'],
+                'max_size': topic_defaults['max_queue'],
+                'data': deque()
+            }
             self.queues.append(single_queue_obj)
 
         self._configure_topics(config, archive_topic, single_queue, single_queue_obj,
@@ -1209,17 +1208,16 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
     def _setup_queue(self, archive_topic, single_queue, single_queue_obj, topic_defaults, topic, *, topic_dict):
         # pylint: disable=too-many-arguments
         if not single_queue or topic == archive_topic:
-            queue = dict(
-                {'name': topic,
-                 'type': 'normal',
-                 'ignore_start_time': to_bool(topic_dict.get('ignore_start_time', topic_defaults['ignore_start_time'])),
-                 'ignore_end_time': to_bool(topic_dict.get('ignore_end_time', topic_defaults['ignore_end_time'])),
-                 'adjust_start_time': to_float(topic_dict.get('adjust_start_time', topic_defaults['adjust_start_time'])),
-                 'adjust_end_time': to_float(topic_dict.get('adjust_end_time', topic_defaults['adjust_end_time'])),
-                 'max_size': topic_dict.get('max_queue', topic_defaults['max_queue']),
-                 'data': deque()
-                 }
-            )
+            queue = {
+                'name': topic,
+                'type': 'normal',
+                'ignore_start_time': to_bool(topic_dict.get('ignore_start_time', topic_defaults['ignore_start_time'])),
+                'ignore_end_time': to_bool(topic_dict.get('ignore_end_time', topic_defaults['ignore_end_time'])),
+                'adjust_start_time': to_float(topic_dict.get('adjust_start_time', topic_defaults['adjust_start_time'])),
+                'adjust_end_time': to_float(topic_dict.get('adjust_end_time', topic_defaults['adjust_end_time'])),
+                'max_size': topic_dict.get('max_queue', topic_defaults['max_queue']),
+                'data': deque()
+            }
             self.queues.append(queue)
             self.subscribed_topics[topic]['queue'] = queue
         else:
@@ -1307,17 +1305,16 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         self.subscribed_topics[topic]['use_server_datetime'] = topic_defaults['use_server_datetime']
         self.subscribed_topics[topic]['datetime_format'] = topic_defaults['datetime_format']
         self.subscribed_topics[topic]['offset_format'] = topic_defaults['offset_format']
-        queue = dict(
-            {'name': topic,
-             'type': 'collector',
-             'ignore_start_time': topic_defaults['ignore_start_time'],
-             'ignore_end_time': topic_defaults['ignore_end_time'],
-             'adjust_start_time': topic_defaults['adjust_start_time'],
-             'adjust_end_time': topic_defaults['adjust_end_time'],
-             'max_size': topic_defaults['max_queue'],
-             'data': self.collected_queue
-             }
-        )
+        queue = {
+            'name': topic,
+            'type': 'collector',
+            'ignore_start_time': topic_defaults['ignore_start_time'],
+            'ignore_end_time': topic_defaults['ignore_end_time'],
+            'adjust_start_time': topic_defaults['adjust_start_time'],
+            'adjust_end_time': topic_defaults['adjust_end_time'],
+            'max_size': topic_defaults['max_queue'],
+            'data': self.collected_queue
+        }
         self.subscribed_topics[topic]['queue'] = queue
         self.queues.append(queue)
 
