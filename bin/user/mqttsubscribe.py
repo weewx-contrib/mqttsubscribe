@@ -2191,14 +2191,7 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         protocol_string = service_dict.get('protocol', 'MQTTv311')
         protocol = getattr(mqtt, protocol_string, 0)
 
-        clean_start_string = service_dict.get('clean_start', 'MQTT_CLEAN_START_FIRST_ONLY')
-        try:
-            clean_start = to_bool(clean_start_string)
-        except ValueError:
-            try:
-                clean_start = getattr(mqtt, clean_start_string)
-            except AttributeError:
-                raise ValueError(MQTTSubscriber.msgX[39003].format(clean_start_string=clean_start_string)) from None
+        clean_start = self._parse_clean_start(service_dict.get('clean_start', 'MQTT_CLEAN_START_FIRST_ONLY'))
 
         mqtt_options = {
             'clientid': service_dict.get('clientid', 'MQTTSubscribe-' + str(random.randint(1000, 9999))),
@@ -2243,6 +2236,17 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
             manage_weewx_config.add_observation_to_unit_dict(weewx_config)
 
         self._setup_mqtt(mqtt_options, message_callback_provider_name, message_callback_config)
+
+    @staticmethod
+    def _parse_clean_start(clean_start_string):
+        ''' Resolve the clean_start option to a boolean or an MQTT constant. '''
+        try:
+            return to_bool(clean_start_string)
+        except ValueError:
+            try:
+                return getattr(mqtt, clean_start_string)
+            except AttributeError:
+                raise ValueError(MQTTSubscriber.msgX[39003].format(clean_start_string=clean_start_string)) from None
 
     @classmethod
     def get_subscriber(cls, service_dict, logger):
@@ -2719,13 +2723,17 @@ class MQTTSubscribeService(StdService):
                                   MQTTSubscribeService.msgX[20003].format(dateTime=weeutil.weeutil.timestamp_to_string(event.packet['dateTime']),
                                                                           packet=to_sorted_string(event.packet)))
 
-            if self.subscriber.cached_fields:
-                for field in self.subscriber.cached_fields:
-                    if field in event.packet:
-                        self.cache.invalidate_value(field, event.packet['dateTime'])
+            self._invalidate_cached_fields(event.packet)
             self.logger.debug(21001,
                               MQTTSubscribeService.msgX[21001].format(dateTime=weeutil.weeutil.timestamp_to_string(event.packet['dateTime']),
                                                                       packet=to_sorted_string(event.packet)))
+
+    def _invalidate_cached_fields(self, packet):
+        ''' Invalidate the cached fields that are present in the packet. '''
+        if self.subscriber.cached_fields:
+            for field in self.subscriber.cached_fields:
+                if field in packet:
+                    self.cache.invalidate_value(field, packet['dateTime'])
 
     # this works for hardware generation, but software generation does not 'quality control'
     # the archive record, so this data is not 'QC' in this case.
@@ -2884,21 +2892,25 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
             if queue['name'] == self.archive_topic:
                 continue
 
-            for data in self.subscriber.get_data(queue):
-                if data:
-                    archive_start = weeutil.weeutil.startOfInterval(data['dateTime'], self._archive_interval)
-                    if archive_start < self.prev_archive_start:
-                        self.logger.error(14001, MQTTSubscribeDriver.msgX[14001].format(archive_start=archive_start,
-                                                                                        prev_archive_start=self.prev_archive_start,
-                                                                                        data=to_sorted_string(data)))
-                    else:
-                        self.last_loop_packet_ts = data['dateTime']
-                        self.prev_archive_start = archive_start
-                        self.logger.debug(11003,
-                                          MQTTSubscribeDriver.msgX[11003].format(queue_name=queue['name'],
-                                                                                 dateTime=weeutil.weeutil.timestamp_to_string(data['dateTime']),
-                                                                                 data=to_sorted_string(data)))
-                        yield data
+            yield from self._process_queue_data(queue)
+
+    def _process_queue_data(self, queue):
+        ''' Yield the queue data that does not precede the previous archive start. '''
+        for data in self.subscriber.get_data(queue):
+            if data:
+                archive_start = weeutil.weeutil.startOfInterval(data['dateTime'], self._archive_interval)
+                if archive_start < self.prev_archive_start:
+                    self.logger.error(14001, MQTTSubscribeDriver.msgX[14001].format(archive_start=archive_start,
+                                                                                    prev_archive_start=self.prev_archive_start,
+                                                                                    data=to_sorted_string(data)))
+                else:
+                    self.last_loop_packet_ts = data['dateTime']
+                    self.prev_archive_start = archive_start
+                    self.logger.debug(11003,
+                                      MQTTSubscribeDriver.msgX[11003].format(queue_name=queue['name'],
+                                                                             dateTime=weeutil.weeutil.timestamp_to_string(data['dateTime']),
+                                                                             data=to_sorted_string(data)))
+                    yield data
 
     def _handle_empty_queue(self):
         self.logger.trace(10001, MQTTSubscribeDriver.msgX[10001])
@@ -3522,19 +3534,7 @@ For more inforation see, https://weewx-mqtt.github.io/subscribe/simulator-mode/
         self.logging_level = options.logging_level
         self.logging_file = options.logging_file
 
-        if self.simulation_type == 'driver' and options.binding == 'loop':
-            if options.archive_interval:
-                parser.error("'--archive-interval' is not valid when performing driver simulation and '--binding=loop'.")
-            if options.archive_delay:
-                parser.error("'--archive-delay' is not valid when performing driver simulation and '--binding=loop'.")
-
-        if self.simulation_type == 'driver':
-            self.archive_delay = options.archive_delay
-            if not self.archive_delay:
-                self.archive_delay = 15
-            self.archive_interval = options.archive_interval
-            if not self.archive_interval:
-                self.archive_interval = 300
+        self._init_driver_options(parser, options)
 
         if self.simulation_type == 'service':
             self.units = options.units
@@ -3543,6 +3543,23 @@ For more inforation see, https://weewx-mqtt.github.io/subscribe/simulator-mode/
         self.engine = None
         self.config_dict = None
         self.logger = None
+
+    def _init_driver_options(self, parser, options):  # pragma: no cover
+        if self.simulation_type != 'driver':
+            return
+
+        if options.binding == 'loop':
+            if options.archive_interval:
+                parser.error("'--archive-interval' is not valid when performing driver simulation and '--binding=loop'.")
+            if options.archive_delay:
+                parser.error("'--archive-delay' is not valid when performing driver simulation and '--binding=loop'.")
+
+        self.archive_delay = options.archive_delay
+        if not self.archive_delay:
+            self.archive_delay = 15
+        self.archive_interval = options.archive_interval
+        if not self.archive_interval:
+            self.archive_interval = 300
 
     def init_configuration(self, parser):  # pragma: no cover
         """ Initialuze the configuration object. """
