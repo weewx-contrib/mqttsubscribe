@@ -603,7 +603,6 @@ class Logger():  # pylint: disable=too-many-instance-attributes
         124002: "{count} messages have been suppressed of {max}.",
         # exception messages
         129001: "{message_id} has been configured multiple times",
-        129002: "{message_id} has been configured multiple times",
         129003: "{category} is not valid. Valid categories are {valid_categories}",
         129004: "{category} is missing 'max' configuration option.",
         129005: "{category} is missing 'duration' configuration option.",
@@ -2651,7 +2650,6 @@ class MQTTSubscribeService(StdService):
         29001: "No 'MQTTSubscribeService'/'MQTTSubscribe' configuration section found.",
         29002: "archive_topic, {archive_topic}, is invalid when running as a service",
         29003: "MQTTSubscribeService: Unknown binding: {binding}",
-        29004: "caching is not available with record generation of type '{record_generation}' and and binding of type 'loop'",
     }
 
     def __init__(self, engine, config_dict):
