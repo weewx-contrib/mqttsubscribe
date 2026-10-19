@@ -1,4 +1,4 @@
-name: TEST the versioning workflow
+name: Keep the versions up-to-date
 
 on:
   release:
