@@ -3217,30 +3217,12 @@ class MQTTSubscribeConfiguration():
                                               section_deprecated_options=section_deprecated_options.get("REPLACE_ME", {}),
                                               error_msgs=error_msgs,
                                               warn_msgs=warn_msgs)
-            elif subsection not in section_configspec.sections and parent == 'subfields':
-                subfield_deprecated_options = section_deprecated_options.get('MQTTSubscribe', {}) \
-                    .get('topics', {}) \
-                    .get('REPLACE_ME', {}) \
-                    .get('REPLACE_ME', {})
-                self.validate(subsection,
-                              hierarchy,
-                              section[subsection],
-                              section_configspec=self.config_spec['MQTTSubscribe']['topics']['REPLACE_ME']["REPLACE_ME"],
-                              section_deprecated_options=subfield_deprecated_options,
-                              error_msgs=error_msgs,
-                              warn_msgs=warn_msgs
-                              )
             elif subsection not in section_configspec.sections:
-                if "REPLACE_ME" in section_configspec.sections:
-                    self.validate(subsection,
-                                  hierarchy,
-                                  section[subsection],
-                                  section_configspec=section_configspec["REPLACE_ME"],
-                                  section_deprecated_options=section_deprecated_options.get("REPLACE_ME", {}),
-                                  error_msgs=error_msgs,
-                                  warn_msgs=warn_msgs)
-                elif subsection not in section_deprecated_options:
-                    error_msgs.append(f"ERROR: Unknown option: {hierarchy}{subsection}")
+                self._validate_unknown_subsection(parent, hierarchy, section, subsection,
+                                                  section_configspec=section_configspec,
+                                                  section_deprecated_options=section_deprecated_options,
+                                                  error_msgs=error_msgs,
+                                                  warn_msgs=warn_msgs)
             else:
                 self.validate(subsection,
                               hierarchy,
@@ -3249,6 +3231,33 @@ class MQTTSubscribeConfiguration():
                               section_deprecated_options=section_deprecated_options.get(subsection, {}),
                               error_msgs=error_msgs,
                               warn_msgs=warn_msgs)
+
+    def _validate_unknown_subsection(self, parent, hierarchy, section, subsection, *,
+                                     section_configspec, section_deprecated_options, error_msgs, warn_msgs):
+        # pylint: disable=too-many-arguments
+        if parent == 'subfields':
+            subfield_deprecated_options = section_deprecated_options.get('MQTTSubscribe', {}) \
+                .get('topics', {}) \
+                .get('REPLACE_ME', {}) \
+                .get('REPLACE_ME', {})
+            self.validate(subsection,
+                          hierarchy,
+                          section[subsection],
+                          section_configspec=self.config_spec['MQTTSubscribe']['topics']['REPLACE_ME']["REPLACE_ME"],
+                          section_deprecated_options=subfield_deprecated_options,
+                          error_msgs=error_msgs,
+                          warn_msgs=warn_msgs
+                          )
+        elif "REPLACE_ME" in section_configspec.sections:
+            self.validate(subsection,
+                          hierarchy,
+                          section[subsection],
+                          section_configspec=section_configspec["REPLACE_ME"],
+                          section_deprecated_options=section_deprecated_options.get("REPLACE_ME", {}),
+                          error_msgs=error_msgs,
+                          warn_msgs=warn_msgs)
+        elif subsection not in section_deprecated_options:
+            error_msgs.append(f"ERROR: Unknown option: {hierarchy}{subsection}")
 
     def _validate_topics_section(self, parent, hierarchy, section, *, section_configspec, section_deprecated_options, error_msgs, warn_msgs):
         # pylint: disable=too-many-arguments
