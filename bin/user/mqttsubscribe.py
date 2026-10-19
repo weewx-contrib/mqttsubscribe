@@ -593,7 +593,7 @@ class Logger():  # pylint: disable=too-many-instance-attributes
     # It is 'captured' via the NEW_ARCHIVE_RECORD event but due to WeeWX processing, updated via the END_ARCHIVE_PERIOD.
     # It is added to every log message.
     archive_timestamp = -1
-    msgX = {
+    log_messages = {
         # trace message
         # debug messages
         # informational messages
@@ -636,7 +636,7 @@ class Logger():  # pylint: disable=too-many-instance-attributes
 
         # Logging is setup, now safe to log a mwssage about using throttling option
         if 'throttle' in config:
-            self.info(122001, Logger.msgX[122001])
+            self.info(122001, Logger.log_messages[122001])
 
     def _parse_throttle_config(self, config):
         """ Parse the 'throttle' section of the config into the internal representation. """
@@ -654,11 +654,11 @@ class Logger():  # pylint: disable=too-many-instance-attributes
         categories = {}
         for category in throttle.get('category', configobj.ConfigObj({})).sections:
             if category not in Logger.valid_categories:
-                raise ValueError(Logger.msgX[129003].format(category=category, valid_categories=Logger.valid_categories))
+                raise ValueError(Logger.log_messages[129003].format(category=category, valid_categories=Logger.valid_categories))
             if 'max' not in throttle['category'][category]:
-                raise ValueError(Logger.msgX[129004].format(category=category))
+                raise ValueError(Logger.log_messages[129004].format(category=category))
             if 'duration' not in throttle['category'][category]:
-                raise ValueError(Logger.msgX[129005].format(category=category))
+                raise ValueError(Logger.log_messages[129005].format(category=category))
             throttle['category'][category]['max'] = to_int(throttle['category'][category]['max'])
             throttle['category'][category]['duration'] = to_int(throttle['category'][category]['duration'])
             categories[category] = throttle['category'][category]
@@ -679,7 +679,7 @@ class Logger():  # pylint: disable=too-many-instance-attributes
             for message_id in message_ids:
                 message_id_int = to_int(message_id)
                 if message_id_int in messages:
-                    raise ValueError(Logger.msgX[129001].format(message_id=message_id))
+                    raise ValueError(Logger.log_messages[129001].format(message_id=message_id))
                 messages[message_id_int] = {
                     'duration': to_int(throttle['messages'][message]['duration']),
                     'max': to_int(throttle['messages'][message]['max'])
@@ -691,9 +691,9 @@ class Logger():  # pylint: disable=too-many-instance-attributes
     def _validate_throttle_message(message_config, message):
         """ Validate a 'messages' section of the throttle config. """
         if 'max' not in message_config:
-            raise ValueError(Logger.msgX[129006].format(message=message))
+            raise ValueError(Logger.log_messages[129006].format(message=message))
         if 'duration' not in message_config:
-            raise ValueError(Logger.msgX[129007].format(message=message))
+            raise ValueError(Logger.log_messages[129007].format(message=message))
 
     def _setup_logging(self):
         """ Setup the weewx message handlers. """
@@ -748,7 +748,7 @@ class Logger():  # pylint: disable=too-many-instance-attributes
         if self.logged_ids[msg_id]['count'] > throttle_config['max']:
             if self.logged_ids[msg_id]['count'] % throttle_config['max'] == 0:
                 self.logged_ids[msg_id]['count'] += 1
-                self.error(None, Logger.msgX[124002].format(count=self.logged_ids[msg_id]['count'], max=throttle_config['max']))
+                self.error(None, Logger.log_messages[124002].format(count=self.logged_ids[msg_id]['count'], max=throttle_config['max']))
                 return False
 
         self.logged_ids[msg_id]['count'] += 1
@@ -772,7 +772,9 @@ class Logger():  # pylint: disable=too-many-instance-attributes
 
         if self.logged_ids[msg_id]['count'] > throttle_config['max']:
             if self.logged_ids[msg_id]['count'] % throttle_config['max'] == 0:
-                self.error(None, Logger.msgX[124001].format(count=self.logged_ids[msg_id]['count'] - throttle_config['max'], window=window))
+                self.error(None, Logger.log_messages[124001].format(
+                    count=self.logged_ids[msg_id]['count'] - throttle_config['max'],
+                    window=window))
                 return False
             return True
 
@@ -794,7 +796,7 @@ class Logger():  # pylint: disable=too-many-instance-attributes
 
         if self.logged_ids[msg_id]['count'] % throttle_config['max'] == 0:
             self.logged_ids[msg_id]['count'] += 1
-            self.error(None, Logger.msgX[124002].format(count=self.logged_ids[msg_id]['count'], max=throttle_config['max']))
+            self.error(None, Logger.log_messages[124002].format(count=self.logged_ids[msg_id]['count'], max=throttle_config['max']))
             return False
 
         self.logged_ids[msg_id]['count'] += 1
@@ -822,7 +824,7 @@ class Logger():  # pylint: disable=too-many-instance-attributes
 
         if threshold > throttle_config['max']:
             if threshold % throttle_config['max'] == 0:
-                self.error(None, Logger.msgX[124001].format(count=threshold))
+                self.error(None, Logger.log_messages[124001].format(count=threshold))
                 return False
             return True
 
@@ -888,7 +890,7 @@ class Logger():  # pylint: disable=too-many-instance-attributes
 
 class RecordCache():
     """ Manage the cache. """
-    msgX = {
+    log_messages = {
         # trace message
         100001:
         "RecordCache is_valid key={key} timestamp={timestamp} expires_after={expires_after} cache_value={cache_value} is_valid={is_valid}",
@@ -920,19 +922,19 @@ class RecordCache():
             valid = (expires_after is None or timestamp - self.cached_values[key]['timestamp'] < expires_after) and \
                 self.cached_values[key]['invalidated'] > timestamp
 
-        self.logger.trace(100001, RecordCache.msgX[100001].format(key=key,
-                                                                  timestamp=timestamp,
-                                                                  expires_after=expires_after,
-                                                                  cache_value=self.dump_key(key),
-                                                                  is_valid=valid))
+        self.logger.trace(100001, RecordCache.log_messages[100001].format(key=key,
+                                                                          timestamp=timestamp,
+                                                                          expires_after=expires_after,
+                                                                          cache_value=self.dump_key(key),
+                                                                          is_valid=valid))
         return valid
 
     def get_value(self, key, timestamp, expires_after):
         """ Get the cached value. """
-        self.logger.trace(100002, RecordCache.msgX[100002].format(key=key,
-                                                                  timestamp=timestamp,
-                                                                  expires_after=expires_after,
-                                                                  cache_value=self.dump_key(key)))
+        self.logger.trace(100002, RecordCache.log_messages[100002].format(key=key,
+                                                                          timestamp=timestamp,
+                                                                          expires_after=expires_after,
+                                                                          cache_value=self.dump_key(key)))
         if self.is_valid(key, timestamp, expires_after):
             return self.cached_values[key]['value']
 
@@ -940,15 +942,15 @@ class RecordCache():
 
     def update_value(self, key, value, unit_system, timestamp):
         """ Update the cached value. """
-        self.logger.trace(100003, RecordCache.msgX[100003].format(key=key,
-                                                                  value=value,
-                                                                  unit_system=unit_system,
-                                                                  timestamp=timestamp,
-                                                                  cache_value=self.dump_key(key)))
+        self.logger.trace(100003, RecordCache.log_messages[100003].format(key=key,
+                                                                          value=value,
+                                                                          unit_system=unit_system,
+                                                                          timestamp=timestamp,
+                                                                          cache_value=self.dump_key(key)))
         if self.unit_system is None:
             self.unit_system = unit_system
         if unit_system != self.unit_system:
-            raise ValueError(RecordCache.msgX[109001].format(unit_system=unit_system, self_unit_system=self.unit_system))
+            raise ValueError(RecordCache.log_messages[109001].format(unit_system=unit_system, self_unit_system=self.unit_system))
         self.cached_values[key] = {}
         self.cached_values[key]['value'] = value
         self.cached_values[key]['timestamp'] = timestamp
@@ -960,7 +962,7 @@ class RecordCache():
                   For additional inforamtion see, https://groups.google.com/g/weewx-development/c/1cJBMAX3Wsg
                   Add also, https://github.com/bellrichm/WeeWX-MQTTSubscribe/issues/178
         """
-        self.logger.trace(100004, RecordCache.msgX[100004].format(key=key, timestamp=timestamp, cache_value=self.dump_key(key)))
+        self.logger.trace(100004, RecordCache.log_messages[100004].format(key=key, timestamp=timestamp, cache_value=self.dump_key(key)))
         if key in self.cached_values and timestamp < self.cached_values[key]['invalidated']:
             self.cached_values[key]['invalidated'] = timestamp
 
@@ -974,7 +976,7 @@ class RecordCache():
             If a key/value is no longer valid, use invalidate_value with current timestamp.
             Do not use this method to remove invalidated cached key/values.
         """
-        self.logger.trace(100005, RecordCache.msgX[100005].format(key=key, cache_value=self.dump_key(key)))
+        self.logger.trace(100005, RecordCache.log_messages[100005].format(key=key, cache_value=self.dump_key(key)))
         if key in self.cached_values:
             del self.cached_values[key]
 
@@ -1041,7 +1043,7 @@ class CollectData():
 
 class TopicManager():  # pylint: disable=too-many-instance-attributes
     """ Manage the MQTT topic subscriptions. """
-    msgX = {
+    log_messages = {
         # trace message
         50001: "TopicManager Adding wind data {fieldname} {dateTime}: {data}",
         50002: "TopicManager Added to queue {topic} {topic_data} {dateTime}: {data}",
@@ -1089,7 +1091,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         self.logger = logger
 
         if not config.sections:
-            raise ValueError(TopicManager.msgX[59001])
+            raise ValueError(TopicManager.log_messages[59001])
 
         self.message_config_name = f"message-{time.time():f}"
 
@@ -1115,7 +1117,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         self.queues = []
 
         single_queue = to_bool(config.get('single_queue', False))
-        self.logger.debug(51001, TopicManager.msgX[51001].format(single_queue=single_queue))
+        self.logger.debug(51001, TopicManager.log_messages[51001].format(single_queue=single_queue))
         single_queue_obj = None
         if single_queue:
             single_queue_obj = {
@@ -1137,8 +1139,8 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
 
         self._add_collector_queue(topic_defaults)
 
-        self.logger.debug(51002, TopicManager.msgX[51002].format(subscribed_topics=json.dumps(self.subscribed_topics, default=str)))
-        self.logger.debug(51003, TopicManager.msgX[51003].format(cached_fields=self.cached_fields))
+        self.logger.debug(51002, TopicManager.log_messages[51002].format(subscribed_topics=json.dumps(self.subscribed_topics, default=str)))
+        self.logger.debug(51003, TopicManager.log_messages[51003].format(cached_fields=self.cached_fields))
 
     def _configure_topics(self, config, archive_topic, single_queue, single_queue_obj, *,
                           default_message_dict, topic_defaults, field_defaults):
@@ -1155,7 +1157,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
 
             unit_system_name = topic_dict.get('unit_system', topic_defaults['unit_system_name']).strip().upper()
             if unit_system_name not in weewx.units.unit_constants:
-                raise ValueError(TopicManager.msgX[59002].format(unit_system_name=unit_system_name))
+                raise ValueError(TopicManager.log_messages[59002].format(unit_system_name=unit_system_name))
             unit_system = weewx.units.unit_constants[unit_system_name]
 
             self.subscribed_topics[topic] = {}
@@ -1330,17 +1332,17 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         default = {}
 
         self.collect_wind_across_loops = to_bool(config.get('collect_wind_across_loops', True))
-        self.logger.debug(51004, TopicManager.msgX[51004].format(collect_wind_across_loops=self.collect_wind_across_loops))
+        self.logger.debug(51004, TopicManager.log_messages[51004].format(collect_wind_across_loops=self.collect_wind_across_loops))
 
         self.collect_observations = to_bool(config.get('collect_observations', False))
-        self.logger.debug(51005, TopicManager.msgX[51005].format(collect_observations=self.collect_observations))
+        self.logger.debug(51005, TopicManager.log_messages[51005].format(collect_observations=self.collect_observations))
 
         single_queue = to_bool(config.get('single_queue', False))
-        self.logger.debug(51006, TopicManager.msgX[51006].format(single_queue=single_queue))
+        self.logger.debug(51006, TopicManager.log_messages[51006].format(single_queue=single_queue))
 
         default['unit_system_name'] = config.get('unit_system', 'US').strip().upper()
         if default['unit_system_name'] not in weewx.units.unit_constants:
-            raise ValueError(TopicManager.msgX[59003].format(unit_system_name=default['unit_system_name']))
+            raise ValueError(TopicManager.log_messages[59003].format(unit_system_name=default['unit_system_name']))
 
         default['msg_id_field'] = config.get('msg_id_field', None)
         default['qos'] = to_int(config.get('qos', 0))
@@ -1386,7 +1388,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
             if field_dict['units'] in weewx.units.conversionDict and field['name'] in weewx.units.obs_group_dict:
                 field['units'] = field_dict['units']
             else:
-                raise ValueError(TopicManager.msgX[59004].format(field_name=field['name'], units=field_dict['units']))
+                raise ValueError(TopicManager.log_messages[59004].format(field_name=field['name'], units=field_dict['units']))
 
         if (field_dict).get('subfields', None):
             field['subfields'] = (field_dict)['subfields'].sections
@@ -1425,7 +1427,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
 
     def append_data(self, topic, in_data, fieldname=None):
         """ Add the MQTT data to the queue. """
-        self.logger.debug(51007, TopicManager.msgX[51007].format(topic=topic, in_data=to_sorted_string(in_data)))
+        self.logger.debug(51007, TopicManager.log_messages[51007].format(topic=topic, in_data=to_sorted_string(in_data)))
         data = dict(in_data)
         payload = {}
 
@@ -1445,22 +1447,22 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
 
         if fieldname in self.collected_fields:
             self._queue_size_check(self.collected_queue, queue['max_size'])
-            self.logger.trace(50001, TopicManager.msgX[50001].format(fieldname=fieldname,
-                                                                     dateTime=weeutil.weeutil.timestamp_to_string(data['dateTime']),
-                                                                     data=to_sorted_string(data)))
+            self.logger.trace(50001, TopicManager.log_messages[50001].format(fieldname=fieldname,
+                                                                             dateTime=weeutil.weeutil.timestamp_to_string(data['dateTime']),
+                                                                             data=to_sorted_string(data)))
             payload['fieldname'] = fieldname
             self.collected_queue.append(payload)
         else:
             self._queue_size_check(queue, queue['max_size'])
-            self.logger.trace(50002, TopicManager.msgX[50002].format(topic=topic,
-                                                                     topic_data=self._lookup_topic(topic),
-                                                                     dateTime=weeutil.weeutil.timestamp_to_string(data['dateTime']),
-                                                                     data=to_sorted_string(data)))
+            self.logger.trace(50002, TopicManager.log_messages[50002].format(topic=topic,
+                                                                             topic_data=self._lookup_topic(topic),
+                                                                             dateTime=weeutil.weeutil.timestamp_to_string(data['dateTime']),
+                                                                             data=to_sorted_string(data)))
             queue['data'].append(payload,)
 
     def peek_datetime(self, queue):
         """ Return the date/time of the first element in the queue. """
-        self.logger.trace(50003, TopicManager.msgX[50003].format(size=len(queue)))
+        self.logger.trace(50003, TopicManager.log_messages[50003].format(size=len(queue)))
         datetime_value = None
         if queue:
             datetime_value = queue[0]['data']['dateTime']
@@ -1469,7 +1471,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
 
     def peek_last_datetime(self, queue):
         """ Return the date/time of the last element in the queue. """
-        self.logger.trace(50004, TopicManager.msgX[50004].format(size=len(queue)))
+        self.logger.trace(50004, TopicManager.log_messages[50004].format(size=len(queue)))
         datetime_value = 0
         if queue:
             datetime_value = queue[-1]['data']['dateTime']
@@ -1484,7 +1486,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         """ Get data off the queue of MQTT data. """
         queue_name = queue['name']
         data_queue = queue['data']
-        self.logger.trace(50005, TopicManager.msgX[50005].format(queue_name=queue_name, size=len(data_queue)))
+        self.logger.trace(50005, TopicManager.log_messages[50005].format(queue_name=queue_name, size=len(data_queue)))
         if self.collect_wind_across_loops:
             collector = self.collector
         else:
@@ -1499,13 +1501,13 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         if not self.collect_wind_across_loops:
             data = collector.get_data()
             if data:
-                self.logger.debug(51008, TopicManager.msgX[51008].format(queue_name=queue_name, data=to_sorted_string(data)))
+                self.logger.debug(51008, TopicManager.log_messages[51008].format(queue_name=queue_name, data=to_sorted_string(data)))
                 yield data
 
         if self.collect_observations:
             data = observation_collector.get_data()
             if data:
-                self.logger.debug(51009, TopicManager.msgX[51009].format(queue_name=queue_name, data=to_sorted_string(data)))
+                self.logger.debug(51009, TopicManager.log_messages[51009].format(queue_name=queue_name, data=to_sorted_string(data)))
                 yield data
 
     def _process_queue(self, end_ts, collector, observation_collector, queue):
@@ -1515,13 +1517,13 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
 
         while data_queue:
             if data_queue[0]['data']['dateTime'] > end_ts:
-                self.logger.trace(50006,
-                                  TopicManager.msgX[50006].format(queue_name=queue_name, size=len(queue), data_queue_content=data_queue[0]))
+                self.logger.trace(50006, TopicManager.log_messages[50006].format(
+                    queue_name=queue_name, size=len(queue), data_queue_content=data_queue[0]))
                 break
             payload = data_queue.popleft()
             if queue_type == 'collector':
                 fieldname = payload['fieldname']
-                self.logger.trace(50007, TopicManager.msgX[50007].
+                self.logger.trace(50007, TopicManager.log_messages[50007].
                                   format(fieldname=fieldname,
                                          dateTime=weeutil.weeutil.timestamp_to_string(payload['data']['dateTime']),
                                          payload=to_sorted_string(payload)))
@@ -1532,7 +1534,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
                 data = payload['data']
 
             if data:
-                self.logger.debug(51010, TopicManager.msgX[51010].format(queue_name=queue_name, data=to_sorted_string(data)))
+                self.logger.debug(51010, TopicManager.log_messages[51010].format(queue_name=queue_name, data=to_sorted_string(data)))
                 yield data
 
     def get_accumulated_data(self, queue, start_time, end_time, units):
@@ -1545,39 +1547,41 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         ignore_end_time = queue['ignore_end_time']
         start_ts, end_ts = self._get_accumulation_window(queue, start_time, end_time)
 
-        self.logger.trace(50010, TopicManager.msgX[50010].format(start_ts=start_ts, end_ts=end_ts))
+        self.logger.trace(50010, TopicManager.log_messages[50010].format(start_ts=start_ts, end_ts=end_ts))
         accumulator = weewx.accum.Accum(weeutil.weeutil.TimeSpan(start_ts, end_ts))
 
         for data in self.get_data(queue, end_ts):
             try:
-                self.logger.trace(50011, TopicManager.msgX[50011].format(queue_name=queue_name,
-                                                                         dateTime=weeutil.weeutil.timestamp_to_string(data['dateTime']),
-                                                                         data=to_sorted_string(data)))
+                self.logger.trace(50011, TopicManager.log_messages[50011].format(queue_name=queue_name,
+                                                                                 dateTime=weeutil.weeutil.timestamp_to_string(data['dateTime']),
+                                                                                 data=to_sorted_string(data)))
                 accumulator.addRecord(data)
             except weewx.accum.OutOfSpan:
-                self.logger.info(52001, TopicManager.msgX[52001].format(start_ts=start_ts,
-                                                                        end_ts=end_ts,
-                                                                        dateTime=data['dateTime'],
-                                                                        data=to_sorted_string(data)))
+                self.logger.info(52001, TopicManager.log_messages[52001].format(start_ts=start_ts,
+                                                                                end_ts=end_ts,
+                                                                                dateTime=data['dateTime'],
+                                                                                data=to_sorted_string(data)))
 
         target_data = {}
         if not accumulator.isEmpty:
             aggregate_data = accumulator.getRecord()
-            self.logger.trace(50012, TopicManager.msgX[50012].format(queue_name=queue_name,
-                                                                     dateTime=weeutil.weeutil.timestamp_to_string(aggregate_data['dateTime']),
-                                                                     aggregate_data=to_sorted_string(aggregate_data)))
+            self.logger.trace(50012, TopicManager.log_messages[50012].format(queue_name=queue_name,
+                                                                             dateTime=weeutil.weeutil.timestamp_to_string(
+                                                                                 aggregate_data['dateTime']),
+                                                                             aggregate_data=to_sorted_string(aggregate_data)))
             target_data = weewx.units.to_std_system(aggregate_data, units)
-            self.logger.trace(50013, TopicManager.msgX[50013].format(queue_name=queue_name,
-                                                                     dateTime=weeutil.weeutil.timestamp_to_string(target_data['dateTime']),
-                                                                     target_data=to_sorted_string(target_data)))
+            self.logger.trace(50013, TopicManager.log_messages[50013].format(queue_name=queue_name,
+                                                                             dateTime=weeutil.weeutil.timestamp_to_string(
+                                                                                 target_data['dateTime']),
+                                                                             target_data=to_sorted_string(target_data)))
         else:
-            self.logger.trace(50014, TopicManager.msgX[50014])
+            self.logger.trace(50014, TopicManager.log_messages[50014])
 
         # Force dateTime to packet's datetime so that the packet datetime is not updated to the MQTT datetime
         if ignore_end_time:
             target_data['dateTime'] = end_time
 
-        self.logger.debug(51011, TopicManager.msgX[51011].format(queue_name=queue_name, target_data=to_sorted_string(target_data)))
+        self.logger.debug(51011, TopicManager.log_messages[51011].format(queue_name=queue_name, target_data=to_sorted_string(target_data)))
         return target_data
 
     def _get_accumulation_window(self, queue, start_time, end_time):
@@ -1587,13 +1591,13 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         adjust_end_time = queue['adjust_end_time']
 
         if queue['ignore_start_time']:
-            self.logger.trace(50008, TopicManager.msgX[50008])
+            self.logger.trace(50008, TopicManager.log_messages[50008])
             start_ts = self.peek_datetime(data_queue) - adjust_start_time
         else:
             start_ts = start_time - adjust_start_time
 
         if queue['ignore_end_time']:
-            self.logger.trace(50009, TopicManager.msgX[50009])
+            self.logger.trace(50009, TopicManager.log_messages[50009])
             end_ts = self.peek_last_datetime(data_queue) + adjust_end_time
         else:
             end_ts = end_time + adjust_end_time
@@ -1604,7 +1608,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         while len(queue) >= max_queue:
             element = queue.popleft()
             self.logger.error(54001,
-                              TopicManager.msgX[54001].format(max_queue=int(max_queue), element=element))
+                              TopicManager.log_messages[54001].format(max_queue=int(max_queue), element=element))
 
     def get_fields(self, topic):
         """ Get the fields. """
@@ -1666,12 +1670,12 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
                 self.topics[topic] = subscribed_topic
                 return subscribed_topic
 
-        raise ValueError(TopicManager.msgX[59005].format(topic=topic))
+        raise ValueError(TopicManager.log_messages[59005].format(topic=topic))
 
     def _to_epoch(self, datetime_input, datetime_format, offset_format=None):
-        self.logger.trace(50015, TopicManager.msgX[50015].format(datetime_input=datetime_input,
-                                                                 datetime_format=datetime,
-                                                                 offset_format=offset_format))
+        self.logger.trace(50015, TopicManager.log_messages[50015].format(datetime_input=datetime_input,
+                                                                         datetime_format=datetime,
+                                                                         offset_format=offset_format))
         if offset_format:
             offset_start = len(datetime_input) - len(offset_format)
             offset = re.sub(r"\D", "", datetime_input[offset_start:])  # remove everything but the numbers from the UTC offset
@@ -1682,20 +1686,20 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
 
             datetime_string = datetime_input[:offset_start - 1].strip()
 
-            self.logger.trace(50016, TopicManager.msgX[50016].format(offset=offset, sign=sign))
+            self.logger.trace(50016, TopicManager.log_messages[50016].format(offset=offset, sign=sign))
 
         else:
             datetime_string = datetime_input
             offset_delta = datetime.timedelta(hours=0, minutes=0)
 
         epoch = time.mktime((datetime.datetime.strptime(datetime_string, datetime_format) + offset_delta).timetuple())
-        self.logger.trace(50017, TopicManager.msgX[50017].format(datetime_string=datetime_string, epoch=epoch))
+        self.logger.trace(50017, TopicManager.log_messages[50017].format(datetime_string=datetime_string, epoch=epoch))
 
         return epoch
 
 class AbstractMessageCallbackProvider():  # pylint: disable=too-few-public-methods
     """ The abstract MessageCallbackProvider. """
-    msgX = {
+    log_messages = {
         # trace message
         90001: ("MessageCallbackProvider _calc_increment calculating increment for {observation} with "
                 "current: {current_total:f} and previous {previous_total} values."),
@@ -1718,7 +1722,7 @@ class AbstractMessageCallbackProvider():  # pylint: disable=too-few-public-metho
 
     def get_callback(self):
         """ Get the MQTT callback. """
-        raise NotImplementedError(AbstractMessageCallbackProvider.msgX[99001])
+        raise NotImplementedError(AbstractMessageCallbackProvider.log_messages[99001])
 
     def _update_data(self, orig_name, orig_value, fields, default_field_conversion_func, unit_system):
         value = self._convert_value(fields, default_field_conversion_func, orig_name, orig_value)
@@ -1737,7 +1741,7 @@ class AbstractMessageCallbackProvider():  # pylint: disable=too-few-public-metho
         return fieldname, value
 
     def _calc_increment(self, observation, current_total, previous_total, wrap_around):
-        self.logger.trace(90001, AbstractMessageCallbackProvider.msgX[90001].
+        self.logger.trace(90001, AbstractMessageCallbackProvider.log_messages[90001].
                           format(observation=observation,
                                  current_total=current_total,
                                  previous_total=previous_total is None and 'None' or str(previous_total)))
@@ -1747,15 +1751,15 @@ class AbstractMessageCallbackProvider():  # pylint: disable=too-few-public-metho
                 return current_total - previous_total
 
             if wrap_around and current_total < previous_total:
-                self.logger.trace(90002, AbstractMessageCallbackProvider.msgX[90002].format(observation=observation,
-                                                                                            current_total=current_total,
-                                                                                            previous_total=previous_total))
+                self.logger.trace(90002, AbstractMessageCallbackProvider.log_messages[90002].format(observation=observation,
+                                                                                                    current_total=current_total,
+                                                                                                    previous_total=previous_total))
 
                 return current_total
 
-            self.logger.trace(90003, AbstractMessageCallbackProvider.msgX[90003].format(observation=observation,
-                                                                                        current_total=current_total,
-                                                                                        previous_total=previous_total))
+            self.logger.trace(90003, AbstractMessageCallbackProvider.log_messages[90003].format(observation=observation,
+                                                                                                current_total=current_total,
+                                                                                                previous_total=previous_total))
 
         return None
 
@@ -1768,15 +1772,15 @@ class AbstractMessageCallbackProvider():  # pylint: disable=too-few-public-metho
             conversion_error_to_none = fields.get(field, {}).get('conversion_error_to_none', False)
             if conversion_error_to_none:
                 return None
-            raise ConversionError(AbstractMessageCallbackProvider.msgX[99002].format(field=field,
-                                                                                     value=value,
-                                                                                     conversion_func=conversion_func['source'],
-                                                                                     exception=exception))\
+            raise ConversionError(AbstractMessageCallbackProvider.log_messages[99002].format(field=field,
+                                                                                             value=value,
+                                                                                             conversion_func=conversion_func['source'],
+                                                                                             exception=exception))\
                 from exception
 
 class MessageCallbackProvider(AbstractMessageCallbackProvider):
     """ Provide the MQTT callback. """
-    msgX = {
+    log_messages = {
         # trace message
         40001: "MessageCallbackProvider on_message_keyword ignoring field: {key}",
         40002: "MessageCallbackProvider on_message_json ignoring field: {lookup_key}",
@@ -1819,15 +1823,15 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
             if not topic_manager.subscribed_topics[topic][topic_manager.message_config_name]:
                 topic_manager.subscribed_topics[topic][topic_manager.message_config_name] = config.dict()
             else:
-                self.logger.info(42001, MessageCallbackProvider.msgX[42001])
+                self.logger.info(42001, MessageCallbackProvider.log_messages[42001])
 
         if not topic_manager.subscribed_topics[topic][topic_manager.message_config_name]:
-            raise ValueError(MessageCallbackProvider.msgX[49001].format(topic=topic))
+            raise ValueError(MessageCallbackProvider.log_messages[49001].format(topic=topic))
         message_type = topic_manager.subscribed_topics[topic][topic_manager.message_config_name].get('type', None)
         if message_type is None:
-            raise ValueError(MessageCallbackProvider.msgX[49002].format(topic=topic))
+            raise ValueError(MessageCallbackProvider.log_messages[49002].format(topic=topic))
         if message_type not in ['json', 'keyword', 'individual']:
-            raise ValueError(MessageCallbackProvider.msgX[49003].format(message_type=message_type))
+            raise ValueError(MessageCallbackProvider.log_messages[49003].format(message_type=message_type))
 
         self._set_flatten_delimiter(topic, topic_manager)
 
@@ -1868,20 +1872,20 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
             pass
         else:
             # if not fields.get(lookup_key, {}).get('ignore', fields_ignore_default):
-            self.logger.error(44003, MessageCallbackProvider.msgX[44003].format(new_key=new_key, value=value))
+            self.logger.error(44003, MessageCallbackProvider.log_messages[44003].format(new_key=new_key, value=value))
 
     def _check_subfield_count(self, new_key, value, fields):
         ''' Verify the array length matches the configured subfields. Returns True when they match. '''
         if len(value) > len(fields[new_key]['subfields']):
-            self.logger.error(44001, MessageCallbackProvider.msgX[44002].format(new_key=new_key,
-                                                                                value=value,
-                                                                                subfields=fields[new_key]['subfields']))
+            self.logger.error(44001, MessageCallbackProvider.log_messages[44002].format(new_key=new_key,
+                                                                                        value=value,
+                                                                                        subfields=fields[new_key]['subfields']))
             return False
         if len(value) < len(fields[new_key]['subfields']):
             self.logger.error(44002,
-                              MessageCallbackProvider.msgX[44002].format(new_key=new_key,
-                                                                         value=value,
-                                                                         subfields=fields[new_key]['subfields']))
+                              MessageCallbackProvider.log_messages[44002].format(new_key=new_key,
+                                                                                 value=value,
+                                                                                 subfields=fields[new_key]['subfields']))
             return False
         return True
 
@@ -1897,15 +1901,16 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
             i += 1
 
     def _log_message(self, msg):
-        self.logger.debug(41001, MessageCallbackProvider.msgX[41001].format(topic=msg.topic,
-                                                                            qos=msg.qos,
-                                                                            retain=msg.retain,
-                                                                            payload=msg.payload))
+        self.logger.debug(41001, MessageCallbackProvider.log_messages[41001].format(topic=msg.topic,
+                                                                                    qos=msg.qos,
+                                                                                    retain=msg.retain,
+                                                                                    payload=msg.payload))
 
     def _log_exception(self, method, exception, msg):
-        self.logger.error(44004, MessageCallbackProvider.msgX[44004].format(method=method, exception_type=type(exception), exception=exception))
-        self.logger.error(44005, MessageCallbackProvider.msgX[44005].format(topic=msg.topic, payload=msg.payload))
-        self.logger.error(44006, MessageCallbackProvider.msgX[44006].format(traceback=traceback.format_exc()))
+        self.logger.error(44004, MessageCallbackProvider.log_messages[44004].format(
+            method=method, exception_type=type(exception), exception=exception))
+        self.logger.error(44005, MessageCallbackProvider.log_messages[44005].format(topic=msg.topic, payload=msg.payload))
+        self.logger.error(44006, MessageCallbackProvider.log_messages[44006].format(traceback=traceback.format_exc()))
 
     def _on_message_keyword(self, msg):
         # pylint: disable= too-many-locals
@@ -1926,8 +1931,9 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
                 eq_index = field.find(message_dict['keyword_separator'])
                 # Ignore all fields that do not have the separator
                 if eq_index == -1:
-                    self.logger.error(44007, MessageCallbackProvider.msgX[44007].format(keyword_separator=message_dict['keyword_separator']))
-                    self.logger.error(44008, MessageCallbackProvider.msgX[44008].format(field=field))
+                    self.logger.error(44007, MessageCallbackProvider.log_messages[44007].format(
+                        keyword_separator=message_dict['keyword_separator']))
+                    self.logger.error(44008, MessageCallbackProvider.log_messages[44008].format(field=field))
                     continue
 
                 key = field[:eq_index].strip()
@@ -1935,12 +1941,12 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
                     (fieldname, value) = self._update_data(key, field[eq_index + 1:].strip(), fields, fields_conversion_func, unit_system)
                     data[fieldname] = value
                 else:
-                    self.logger.trace(40001, MessageCallbackProvider.msgX[40001].format(key=key))
+                    self.logger.trace(40001, MessageCallbackProvider.log_messages[40001].format(key=key))
 
             if data:
                 self.topic_manager.append_data(msg.topic, data)
             else:
-                self.logger.error(44009, MessageCallbackProvider.msgX[44009].format(topic=msg.topic, payload=msg.payload))
+                self.logger.error(44009, MessageCallbackProvider.log_messages[44009].format(topic=msg.topic, payload=msg.payload))
 
         except Exception as exception:  # (want to catch all) pylint: disable=broad-except
             self._log_exception('on_message_keyword', exception, msg)
@@ -1989,16 +1995,16 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
         for key, value in data_flattened.items():
             lookup_key = self._get_lookup_key(key, msg_id, msg_id_field, fields_ignoring_msg_id)
             if lookup_key in filters and value in filters[lookup_key]:
-                self.logger.info(42002, MessageCallbackProvider.msgX[42002].format(topic=msg.topic,
-                                                                                   payload=msg.payload,
-                                                                                   lookup_key=lookup_key,
-                                                                                   filter=filters[lookup_key]))
+                self.logger.info(42002, MessageCallbackProvider.log_messages[42002].format(topic=msg.topic,
+                                                                                           payload=msg.payload,
+                                                                                           lookup_key=lookup_key,
+                                                                                           filter=filters[lookup_key]))
                 return None
             if not fields.get(lookup_key, {}).get('ignore', fields_ignore_default):
                 (fieldname, value) = self._update_data(lookup_key, value, fields, fields_conversion_func, unit_system)
                 data_final[fieldname] = value
             else:
-                self.logger.trace(40002, MessageCallbackProvider.msgX[40002].format(lookup_key=lookup_key))
+                self.logger.trace(40002, MessageCallbackProvider.log_messages[40002].format(lookup_key=lookup_key))
 
         return data_final
 
@@ -2028,7 +2034,7 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
                 data[fieldname] = value
                 self.topic_manager.append_data(msg.topic, data, fieldname)
             else:
-                self.logger.trace(40003, MessageCallbackProvider.msgX[40003].format(key=key))
+                self.logger.trace(40003, MessageCallbackProvider.log_messages[40003].format(key=key))
 
         except Exception as exception:  # (want to catch all) pylint: disable=broad-except
             self._log_exception('on_message_individual', exception, msg)
@@ -2047,15 +2053,15 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
             elif message_type == 'keyword':
                 self._on_message_keyword(msg)
             else:
-                self.logger.error(44010, MessageCallbackProvider.msgX[44010].format(message_type=message_type,
-                                                                                    topic=msg.topic,
-                                                                                    payload=msg.payload))
+                self.logger.error(44010, MessageCallbackProvider.log_messages[44010].format(message_type=message_type,
+                                                                                            topic=msg.topic,
+                                                                                            payload=msg.payload))
         except Exception as exception:  # (want to catch all) pylint: disable=broad-except
             self._log_exception('on_message_multi', exception, msg)
 
 class ManageWeewxConfig():
     ''' Manage the WeeWX configuration. '''
-    msgX = {
+    log_messages = {
         # trace message
         # debug messages
         # informational messages
@@ -2070,11 +2076,11 @@ class ManageWeewxConfig():
     def _add_unit_group(unit_config, unit):
         group = unit_config.get('group')
         if not group:
-            raise ValueError(ManageWeewxConfig.msgX[119001].format(unit=unit))
+            raise ValueError(ManageWeewxConfig.log_messages[119001].format(unit=unit))
 
         unit_systems = weeutil.weeutil.option_as_list(unit_config.get('unit_system'))
         if not unit_systems:
-            raise ValueError(ManageWeewxConfig.msgX[119002].format(unit=unit))
+            raise ValueError(ManageWeewxConfig.log_messages[119002].format(unit=unit))
 
         for unit_system in unit_systems:
             if unit_system == 'us':
@@ -2084,7 +2090,7 @@ class ManageWeewxConfig():
             elif unit_system == 'metricwx':
                 weewx.units.MetricWXUnits.extend({group: unit})
             else:
-                raise ValueError(ManageWeewxConfig.msgX[119003].format(unit_system=unit_system, unit=unit))
+                raise ValueError(ManageWeewxConfig.log_messages[119003].format(unit_system=unit_system, unit=unit))
 
     def _update_format_config(self, unit_config, unit):
         format_config = unit_config.get('format')
@@ -2129,7 +2135,7 @@ class ManageWeewxConfig():
 
 class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
     """ Manage MQTT sunscriptions. """
-    msgX = {
+    log_messages = {
         # trace message
         # debug messages
         31001: "sanitized configuration removed {exclude_keys}",
@@ -2175,24 +2181,24 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
         exclude_keys = ['password']
         sanitized_service_dict = {k: service_dict[k] for k in set(list(service_dict.keys())) - set(exclude_keys)}
-        self.logger.debug(31001, MQTTSubscriber.msgX[31001].format(exclude_keys=exclude_keys))
-        self.logger.debug(31002, MQTTSubscriber.msgX[31002].format(sanitized_service_dict=sanitized_service_dict))
+        self.logger.debug(31001, MQTTSubscriber.log_messages[31001].format(exclude_keys=exclude_keys))
+        self.logger.debug(31002, MQTTSubscriber.log_messages[31002].format(sanitized_service_dict=sanitized_service_dict))
 
         message_callback_config = service_dict.get('message_callback', None)
 
         topics_dict = service_dict.get('topics', None)
         if topics_dict is None:
-            raise ValueError(MQTTSubscriber.msgX[39001])
+            raise ValueError(MQTTSubscriber.log_messages[39001])
 
         self.archive_topic = service_dict.get('archive_topic', None)
         if self.archive_topic and self.archive_topic not in service_dict['topics']:
-            raise ValueError(MQTTSubscriber.msgX[39002].format(archive_topic=self.archive_topic))
+            raise ValueError(MQTTSubscriber.log_messages[39002].format(archive_topic=self.archive_topic))
 
-        self.logger.info(32001, MQTTSubscriber.msgX[32001].format(archive_topic=self.archive_topic))
+        self.logger.info(32001, MQTTSubscriber.log_messages[32001].format(archive_topic=self.archive_topic))
 
         message_callback_provider_name = service_dict.get('message_callback_provider',
                                                           'user.mqttsubscribe.MessageCallbackProvider')
-        self.logger.info(32002, MQTTSubscriber.msgX[32002].format(message_callback_provider_name=message_callback_provider_name))
+        self.logger.info(32002, MQTTSubscriber.log_messages[32002].format(message_callback_provider_name=message_callback_provider_name))
 
         self._check_deprecated_options(service_dict)
 
@@ -2217,20 +2223,20 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
             'tls_dict': service_dict.get('tls'),
         }
 
-        self.logger.info(32003, MQTTSubscriber.msgX[32003].format(clientid=mqtt_options['clientid']))
-        self.logger.info(32004, MQTTSubscriber.msgX[32004].format(clean_session=mqtt_options['clean_session']))
-        self.logger.info(32005, MQTTSubscriber.msgX[32005].format(clean_start=mqtt_options['clean_start']))
-        self.logger.info(32006, MQTTSubscriber.msgX[32006].format(host=mqtt_options['host']))
-        self.logger.info(32007, MQTTSubscriber.msgX[32007].format(port=mqtt_options['port']))
-        self.logger.info(32008, MQTTSubscriber.msgX[32008].format(protocol=mqtt_options['protocol']))
-        self.logger.info(32009, MQTTSubscriber.msgX[32009].format(keepalive=mqtt_options['keepalive']))
-        self.logger.info(32010, MQTTSubscriber.msgX[32010].format(username=mqtt_options['username']))
-        self.logger.info(32011, MQTTSubscriber.msgX[32011].format(min_delay=mqtt_options['min_delay']))
-        self.logger.info(32012, MQTTSubscriber.msgX[32012].format(max_delay=mqtt_options['max_delay']))
+        self.logger.info(32003, MQTTSubscriber.log_messages[32003].format(clientid=mqtt_options['clientid']))
+        self.logger.info(32004, MQTTSubscriber.log_messages[32004].format(clean_session=mqtt_options['clean_session']))
+        self.logger.info(32005, MQTTSubscriber.log_messages[32005].format(clean_start=mqtt_options['clean_start']))
+        self.logger.info(32006, MQTTSubscriber.log_messages[32006].format(host=mqtt_options['host']))
+        self.logger.info(32007, MQTTSubscriber.log_messages[32007].format(port=mqtt_options['port']))
+        self.logger.info(32008, MQTTSubscriber.log_messages[32008].format(protocol=mqtt_options['protocol']))
+        self.logger.info(32009, MQTTSubscriber.log_messages[32009].format(keepalive=mqtt_options['keepalive']))
+        self.logger.info(32010, MQTTSubscriber.log_messages[32010].format(username=mqtt_options['username']))
+        self.logger.info(32011, MQTTSubscriber.log_messages[32011].format(min_delay=mqtt_options['min_delay']))
+        self.logger.info(32012, MQTTSubscriber.log_messages[32012].format(max_delay=mqtt_options['max_delay']))
         if mqtt_options['password'] is not None:
-            self.logger.info(32013, MQTTSubscriber.msgX[32013])
+            self.logger.info(32013, MQTTSubscriber.log_messages[32013])
         else:
-            self.logger.info(32014, MQTTSubscriber.msgX[32014])
+            self.logger.info(32014, MQTTSubscriber.log_messages[32014])
 
         self.manager = TopicManager(self.archive_topic, topics_dict, self.logger)
 
@@ -2254,7 +2260,7 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
             try:
                 return getattr(mqtt, clean_start_string)
             except AttributeError:
-                raise ValueError(MQTTSubscriber.msgX[39003].format(clean_start_string=clean_start_string)) from None
+                raise ValueError(MQTTSubscriber.log_messages[39003].format(clean_start_string=clean_start_string)) from None
 
     @classmethod
     def get_subscriber(cls, service_dict, logger):
@@ -2304,9 +2310,9 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         try:
             self.connect(mqtt_options)
         except Exception as exception:  # (want to catch all)
-            self.logger.error(34001, MQTTSubscriber.msgX[34001].format(host=mqtt_options['host'],
-                                                                       port=mqtt_options['port'],
-                                                                       exception=exception))
+            self.logger.error(34001, MQTTSubscriber.log_messages[34001].format(host=mqtt_options['host'],
+                                                                               port=mqtt_options['port'],
+                                                                               exception=exception))
             raise weewx.WeeWxIOError(exception)
 
     def _check_deprecated_options(self, service_dict):
@@ -2323,13 +2329,13 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
                                              warn_msgs=warn_msgs)
 
         for msg in warn_msgs:
-            self.logger.info(32015, MQTTSubscriber.msgX[32015].format(msg=msg))
+            self.logger.info(32015, MQTTSubscriber.log_messages[32015].format(msg=msg))
         if len(error_msgs) > 0:
             if not to_bool(service_dict.get('stop_on_validation_errors', False)):
                 for msg in error_msgs:
-                    self.logger.info(32016, MQTTSubscriber.msgX[32016].format(msg=msg))
+                    self.logger.info(32016, MQTTSubscriber.log_messages[32016].format(msg=msg))
             else:
-                raise ValueError(MQTTSubscriber.msgX[39004].format(error_msgs='\n'.join(error_msgs)))
+                raise ValueError(MQTTSubscriber.log_messages[39004].format(error_msgs='\n'.join(error_msgs)))
 
     @property
     def queues(self):
@@ -2379,11 +2385,11 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
         valid_cert_reqs = valid_cert_reqs.get(tls_dict.get('certs_required', 'required'))
         if valid_cert_reqs is None:
-            raise ValueError(MQTTSubscriber.msgX[39005].format(certs_required=tls_dict['certs_required']))
+            raise ValueError(MQTTSubscriber.log_messages[39005].format(certs_required=tls_dict['certs_required']))
 
         tls_version = valid_tls_versions.get(tls_dict.get('tls_version', 'tlsv12'))
         if tls_version is None:
-            raise ValueError(MQTTSubscriber.msgX[39006].format(tls_version=tls_dict['tls_version']))
+            raise ValueError(MQTTSubscriber.log_messages[39006].format(tls_version=tls_dict['tls_version']))
 
         self.client.tls_set(ca_certs=ca_certs,
                             certfile=tls_dict.get('certfile'),
@@ -2402,19 +2408,19 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
     def start(self):
         """ start subscribing to the topics """
-        self.logger.debug(31003, MQTTSubscriber.msgX[31003])
+        self.logger.debug(31003, MQTTSubscriber.log_messages[31003])
         self.client.loop_start()
 
-        self.logger.info(32017, MQTTSubscriber.msgX[32017])
+        self.logger.info(32017, MQTTSubscriber.log_messages[32017])
         while not self.userdata['connect']:
             time.sleep(1)
 
         if self.userdata['connect_rc'] > 0:
-            raise weewx.WeeWxIOError(MQTTSubscriber.msgX[39007].format(connect_rc=int(self.userdata['connect_rc']),
-                                                                       connack_string_rc=connack_string(self.userdata['connect_rc']),
-                                                                       connect_flags=self.userdata['connect_flags']))
+            raise weewx.WeeWxIOError(MQTTSubscriber.log_messages[39007].format(connect_rc=int(self.userdata['connect_rc']),
+                                                                               connack_string_rc=connack_string(self.userdata['connect_rc']),
+                                                                               connect_flags=self.userdata['connect_flags']))
 
-        self.logger.info(32018, MQTTSubscriber.msgX[32018])
+        self.logger.info(32018, MQTTSubscriber.log_messages[32018])
 
     def disconnect(self):
         """ shut it down """
@@ -2426,23 +2432,23 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
                 continue
 
             (result, mid) = client.subscribe(topic, self.manager.get_qos(topic))
-            self.logger.info(32019, MQTTSubscriber.msgX[32019].format(topic=topic, mid=mid, result=result))
+            self.logger.info(32019, MQTTSubscriber.log_messages[32019].format(topic=topic, mid=mid, result=result))
 
     def get_client(self, mqtt_options):
         ''' Get the MQTT client. '''
-        raise NotImplementedError(MQTTSubscriber.msgX[39008])
+        raise NotImplementedError(MQTTSubscriber.log_messages[39008])
 
     def set_callbacks(self, mqtt_options):
         ''' Setup the MQTT callbacks. '''
-        raise NotImplementedError(MQTTSubscriber.msgX[39009])
+        raise NotImplementedError(MQTTSubscriber.log_messages[39009])
 
     def connect(self, mqtt_options):
         ''' Connect to the MQTT server. '''
-        raise NotImplementedError(MQTTSubscriber.msgX[39010])
+        raise NotImplementedError(MQTTSubscriber.log_messages[39010])
 
 class MQTTSubscriberV1(MQTTSubscriber):
     ''' MQTTSubscriber that communicates with paho mqtt v1. '''
-    msgX = {
+    log_messages = {
         # trace message
         # debug messages
         # informational messages
@@ -2459,7 +2465,7 @@ class MQTTSubscriberV1(MQTTSubscriber):
         protocol_string = service_dict.get('protocol', 'MQTTv311')
         protocol = getattr(mqtt, protocol_string, 0)
         if protocol not in [mqtt.MQTTv31, mqtt.MQTTv311]:
-            raise ValueError(MQTTSubscriberV1.msgX[69001].format(protocol_string=protocol_string))
+            raise ValueError(MQTTSubscriberV1.log_messages[69001].format(protocol_string=protocol_string))
 
         super().__init__(service_dict, logger)
 
@@ -2491,8 +2497,8 @@ class MQTTSubscriberV1(MQTTSubscriber):
         # 4: Connection refused - bad username or password
         # 5: Connection refused - not authorised
         # 6-255: Currently unused.
-        self.logger.info(62001, MQTTSubscriberV1.msgX[62001].format(rc=rc))
-        self.logger.info(62002, MQTTSubscriberV1.msgX[62002].format(flags=str(flags)))
+        self.logger.info(62001, MQTTSubscriberV1.log_messages[62001].format(rc=rc))
+        self.logger.info(62002, MQTTSubscriberV1.log_messages[62002].format(flags=str(flags)))
 
         userdata['connect'] = True
         userdata['connect_rc'] = rc
@@ -2501,10 +2507,10 @@ class MQTTSubscriberV1(MQTTSubscriber):
         self._subscribe(client)
 
     def _on_disconnect(self, _client, _userdata, rc):
-        self.logger.info(62003, MQTTSubscriberV1.msgX[62003].format(rc=rc))
+        self.logger.info(62003, MQTTSubscriberV1.log_messages[62003].format(rc=rc))
 
     def _on_subscribe(self, _client, _userdata, mid, granted_qos):
-        self.logger.info(62004, MQTTSubscriberV1.msgX[62004].format(mid=mid, size=len(granted_qos), qos=granted_qos[0]))
+        self.logger.info(62004, MQTTSubscriberV1.log_messages[62004].format(mid=mid, size=len(granted_qos), qos=granted_qos[0]))
 
     def _on_log(self, _client, _userdata, level, msg):
         self.mqtt_logger[level](None, f"MQTTSubscribe MQTT: {msg}")
@@ -2514,7 +2520,7 @@ class MQTTSubscriberV1(MQTTSubscriber):
 
 class MQTTSubscriberV2MQTT3(MQTTSubscriber):
     ''' MQTTSubscriber that communicates with paho mqtt v2. '''
-    msgX = {
+    log_messages = {
         # trace message
         # debug messages
         # informational messages
@@ -2545,8 +2551,8 @@ class MQTTSubscriberV2MQTT3(MQTTSubscriber):
         self.client.connect(mqtt_options['host'], mqtt_options['port'], mqtt_options['keepalive'])
 
     def _on_connect(self, client, userdata, flags, reason_code, _properties):
-        self.logger.info(72001, MQTTSubscriberV2MQTT3.msgX[72001].format(rc=reason_code.value))
-        self.logger.info(72002, MQTTSubscriberV2MQTT3.msgX[72002].format(flags=str(flags)))
+        self.logger.info(72001, MQTTSubscriberV2MQTT3.log_messages[72001].format(rc=reason_code.value))
+        self.logger.info(72002, MQTTSubscriberV2MQTT3.log_messages[72002].format(flags=str(flags)))
         threading.current_thread().name = f"MQTTSubscribe-{threading.get_native_id()}"
 
         userdata['connect'] = True
@@ -2556,10 +2562,11 @@ class MQTTSubscriberV2MQTT3(MQTTSubscriber):
         self._subscribe(client)
 
     def _on_disconnect(self, _client, _userdata, _flags, reason_code, _properties):
-        self.logger.info(72003, MQTTSubscriberV2MQTT3.msgX[72003].format(rc=reason_code.value))
+        self.logger.info(72003, MQTTSubscriberV2MQTT3.log_messages[72003].format(rc=reason_code.value))
 
     def _on_subscribe(self, _client, _userdata, mid, reason_codes, _properties):
-        self.logger.info(72004, MQTTSubscriberV2MQTT3.msgX[72004].format(mid=mid, size=len(reason_codes), reason_code=reason_codes[0].value))
+        self.logger.info(72004, MQTTSubscriberV2MQTT3.log_messages[72004].format(
+            mid=mid, size=len(reason_codes), reason_code=reason_codes[0].value))
 
     def _on_log(self, _client, _userdata, level, msg):
         self.mqtt_logger[level](None, f"MQTTSubscribe MQTT: {msg}")
@@ -2569,7 +2576,7 @@ class MQTTSubscriberV2MQTT3(MQTTSubscriber):
 
 class MQTTSubscriberV2(MQTTSubscriber):
     ''' MQTTSubscriber that communicates with paho mqtt v2. '''
-    msgX = {
+    log_messages = {
         # trace message
         # debug messages
         # informational messages
@@ -2602,8 +2609,8 @@ class MQTTSubscriberV2(MQTTSubscriber):
                             clean_start=mqtt_options['clean_start'])
 
     def _on_connect(self, client, userdata, flags, reason_code, _properties):
-        self.logger.info(82001, MQTTSubscriberV2.msgX[82001].format(rc=reason_code.value))
-        self.logger.info(82002, MQTTSubscriberV2.msgX[82002].format(flags=str(flags)))
+        self.logger.info(82001, MQTTSubscriberV2.log_messages[82001].format(rc=reason_code.value))
+        self.logger.info(82002, MQTTSubscriberV2.log_messages[82002].format(flags=str(flags)))
 
         userdata['connect'] = True
         userdata['connect_rc'] = reason_code.value
@@ -2612,10 +2619,10 @@ class MQTTSubscriberV2(MQTTSubscriber):
         self._subscribe(client)
 
     def _on_disconnect(self, _client, _userdata, _flags, reason_code, _properties):
-        self.logger.info(82003, MQTTSubscriberV2.msgX[82003].format(rc=reason_code.value))
+        self.logger.info(82003, MQTTSubscriberV2.log_messages[82003].format(rc=reason_code.value))
 
     def _on_subscribe(self, _client, _userdata, mid, reason_codes, _properties):
-        self.logger.info(82004, MQTTSubscriberV2.msgX[82004].format(mid=mid, size=len(reason_codes), rc=reason_codes[0].value))
+        self.logger.info(82004, MQTTSubscriberV2.log_messages[82004].format(mid=mid, size=len(reason_codes), rc=reason_codes[0].value))
 
     def _on_log(self, _client, _userdata, level, msg):
         self.mqtt_logger[level](None, f"MQTTSubscribe MQTT: {msg}")
@@ -2625,7 +2632,7 @@ class MQTTSubscriberV2(MQTTSubscriber):
 
 class MQTTSubscribeService(StdService):
     """ The MQTT subscribe service. """
-    msgX = {
+    log_messages = {
         # trace message
         20001: "Packet prior to update is: {dateTime} {packet}",
         20002: "Queue {queue_name} has data: {target_data}",
@@ -2658,7 +2665,7 @@ class MQTTSubscribeService(StdService):
         if service_dict is None:
             service_dict = config_dict.get('MQTTSubscribe')
         if service_dict is None:
-            raise ValueError(MQTTSubscribeService.msgX[29001])
+            raise ValueError(MQTTSubscribeService.log_messages[29001])
 
         logging_filename = service_dict.get('logging_filename', None)
         logging_level = service_dict.get('logging_level', 'NOTSET')
@@ -2672,16 +2679,16 @@ class MQTTSubscribeService(StdService):
 
         self.enable = to_bool(service_dict.get('enable', True))
         if not self.enable:
-            self.logger.info(22001, MQTTSubscribeService.msgX[22001])
+            self.logger.info(22001, MQTTSubscribeService.log_messages[22001])
             return
 
         if engine.stn_info.hardware == DRIVER_NAME:
-            self.logger.info(22002, MQTTSubscribeService.msgX[22002])
+            self.logger.info(22002, MQTTSubscribeService.log_messages[22002])
 
         self.binding = service_dict.get('binding', 'loop')
 
         if 'archive_topic' in service_dict:
-            raise ValueError(MQTTSubscribeService.msgX[29002].format(archive_topic=service_dict['archive_topic']))
+            raise ValueError(MQTTSubscribeService.log_messages[29002].format(archive_topic=service_dict['archive_topic']))
 
         self.next_archive_timestamp = 0
 
@@ -2689,14 +2696,14 @@ class MQTTSubscribeService(StdService):
 
         self.subscriber = MQTTSubscriber.get_subscriber(service_dict, self.logger)
 
-        self.logger.info(22003, MQTTSubscribeService.msgX[22003].format(binding=self.binding))
+        self.logger.info(22003, MQTTSubscribeService.log_messages[22003].format(binding=self.binding))
 
         self.subscriber.start()
 
         self.cache = RecordCache(self.logger)
 
         if self.binding not in ('loop', 'archive'):
-            raise ValueError(MQTTSubscribeService.msgX[29003].format(binding=self.binding))
+            raise ValueError(MQTTSubscribeService.log_messages[29003].format(binding=self.binding))
 
         self.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
         engine.bind(weewx.END_ARCHIVE_PERIOD, self.end_archive_period)
@@ -2713,27 +2720,27 @@ class MQTTSubscribeService(StdService):
         """ Handle the new loop packet event. """
         # packet has traveled back in time
         if self.end_ts > event.packet['dateTime']:
-            self.logger.error(24001, MQTTSubscribeService.msgX[24001].format(dateTime=event.packet['dateTime'], end_ts=self.end_ts))
+            self.logger.error(24001, MQTTSubscribeService.log_messages[24001].format(dateTime=event.packet['dateTime'], end_ts=self.end_ts))
         else:
             start_ts = self.end_ts
             self.end_ts = event.packet['dateTime']
 
             for queue in self.subscriber.queues:  # topics might not be cached.. therefore use subscribed?
-                self.logger.trace(20001,
-                                  MQTTSubscribeService.msgX[20001].format(dateTime=weeutil.weeutil.timestamp_to_string(event.packet['dateTime']),
-                                                                          packet=to_sorted_string(event.packet)))
+                self.logger.trace(20001, MQTTSubscribeService.log_messages[20001].format(
+                    dateTime=weeutil.weeutil.timestamp_to_string(event.packet['dateTime']),
+                    packet=to_sorted_string(event.packet)))
                 target_data = self.subscriber.get_accumulated_data(queue,
                                                                    start_ts, self.end_ts, event.packet['usUnits'])
-                self.logger.trace(20002, MQTTSubscribeService.msgX[20002].format(queue_name=queue['name'], target_data=target_data))
+                self.logger.trace(20002, MQTTSubscribeService.log_messages[20002].format(queue_name=queue['name'], target_data=target_data))
                 event.packet.update(target_data)
-                self.logger.trace(20003,
-                                  MQTTSubscribeService.msgX[20003].format(dateTime=weeutil.weeutil.timestamp_to_string(event.packet['dateTime']),
-                                                                          packet=to_sorted_string(event.packet)))
+                self.logger.trace(20003, MQTTSubscribeService.log_messages[20003].format(
+                    dateTime=weeutil.weeutil.timestamp_to_string(event.packet['dateTime']),
+                    packet=to_sorted_string(event.packet)))
 
             self._invalidate_cached_fields(event.packet)
-            self.logger.debug(21001,
-                              MQTTSubscribeService.msgX[21001].format(dateTime=weeutil.weeutil.timestamp_to_string(event.packet['dateTime']),
-                                                                      packet=to_sorted_string(event.packet)))
+            self.logger.debug(21001, MQTTSubscribeService.log_messages[21001].format(
+                dateTime=weeutil.weeutil.timestamp_to_string(event.packet['dateTime']),
+                packet=to_sorted_string(event.packet)))
 
     def _invalidate_cached_fields(self, packet):
         ''' Invalidate the cached fields that are present in the packet. '''
@@ -2747,22 +2754,23 @@ class MQTTSubscribeService(StdService):
     # If this is important, bind to the loop packet.
     def new_archive_record(self, event):
         """ Handle the new archive record event. """
-        self.logger.debug(21002, MQTTSubscribeService.msgX[21002].format(dateTime=weeutil.weeutil.timestamp_to_string(event.record['dateTime']),
-                                                                         record=to_sorted_string(event.record)))
+        self.logger.debug(21002, MQTTSubscribeService.log_messages[21002].format(
+            dateTime=weeutil.weeutil.timestamp_to_string(event.record['dateTime']),
+            record=to_sorted_string(event.record)))
         if self.binding == 'archive':
             end_ts = event.record['dateTime']
             start_ts = end_ts - event.record['interval'] * 60
 
             for queue in self.subscriber.queues:
-                self.logger.trace(20004,
-                                  MQTTSubscribeService.msgX[20004].format(dateTime=weeutil.weeutil.timestamp_to_string(event.record['dateTime']),
-                                                                          record=to_sorted_string(event.record)))
+                self.logger.trace(20004, MQTTSubscribeService.log_messages[20004].format(
+                    dateTime=weeutil.weeutil.timestamp_to_string(event.record['dateTime']),
+                    record=to_sorted_string(event.record)))
                 target_data = self.subscriber.get_accumulated_data(queue, start_ts, end_ts, event.record['usUnits'])
-                self.logger.trace(20005, MQTTSubscribeService.msgX[20005].format(queue_name=queue['name'], target_data=target_data))
+                self.logger.trace(20005, MQTTSubscribeService.log_messages[20005].format(queue_name=queue['name'], target_data=target_data))
                 event.record.update(target_data)
-                self.logger.trace(20006,
-                                  MQTTSubscribeService.msgX[20006].format(dateTime=weeutil.weeutil.timestamp_to_string(event.record['dateTime']),
-                                                                          record=to_sorted_string(event.record)))
+                self.logger.trace(20006, MQTTSubscribeService.log_messages[20006].format(
+                    dateTime=weeutil.weeutil.timestamp_to_string(event.record['dateTime']),
+                    record=to_sorted_string(event.record)))
 
         if self.subscriber.cached_fields:
             target_data = {}
@@ -2779,8 +2787,9 @@ class MQTTSubscribeService(StdService):
                                                               self.subscriber.cached_fields[field]['expires_after'])
             event.record.update(target_data)
 
-        self.logger.debug(21003, MQTTSubscribeService.msgX[21003].format(dateTime=weeutil.weeutil.timestamp_to_string(event.record['dateTime']),
-                                                                         record=to_sorted_string(event.record)))
+        self.logger.debug(21003, MQTTSubscribeService.log_messages[21003].format(
+            dateTime=weeutil.weeutil.timestamp_to_string(event.record['dateTime']),
+            record=to_sorted_string(event.record)))
         self.next_archive_timestamp = int(event.record['dateTime'] + event.record['interval'] * 120)
 
     def end_archive_period(self, _event):
@@ -2800,7 +2809,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
     # pylint: disable=too-many-instance-attributes
     """weewx driver that reads data from MQTT"""
 
-    msgX = {
+    log_messages = {
         # trace messages
         10001: "Queues are empty.",
         10002: "Creating empty loop packet {dateTime}: {data}",
@@ -2832,7 +2841,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         self.logger.log_environment(config_dict)
 
         self.max_loop_interval = to_int(stn_dict.get('max_loop_interval', 0))
-        self.logger.info(12001, MQTTSubscribeDriver.msgX[12001].format(max_loop_interval=self.max_loop_interval))
+        self.logger.info(12001, MQTTSubscribeDriver.log_messages[12001].format(max_loop_interval=self.max_loop_interval))
         self.last_loop_packet_ts = 0
         self.start_loop_period_ts = 0
 
@@ -2850,7 +2859,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
 
         self.queue = next((q for q in self.subscriber.queues if q['name'] == self.archive_topic), None)
 
-        self.logger.info(12002, MQTTSubscribeDriver.msgX[12002].format(wait_before_retry=self.wait_before_retry))
+        self.logger.info(12002, MQTTSubscribeDriver.log_messages[12002].format(wait_before_retry=self.wait_before_retry))
         self.subscriber.start()
 
     @property
@@ -2862,7 +2871,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
     def archive_interval(self):
         """ The archive interval. """
         if not self.archive_topic:
-            self.logger.debug(11001, MQTTSubscribeDriver.msgX[11001])
+            self.logger.debug(11001, MQTTSubscribeDriver.log_messages[11001])
             raise NotImplementedError
 
         return self._archive_interval
@@ -2873,8 +2882,9 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
 
     def new_archive_record(self, event):
         """ Handle the new archive record event. """
-        self.logger.debug(11002, MQTTSubscribeDriver.msgX[11002].format(dateTime=weeutil.weeutil.timestamp_to_string(event.record['dateTime']),
-                                                                        record=to_sorted_string(event.record)))
+        self.logger.debug(11002, MQTTSubscribeDriver.log_messages[11002].format(
+            dateTime=weeutil.weeutil.timestamp_to_string(event.record['dateTime']),
+            record=to_sorted_string(event.record)))
         self.next_archive_timestamp = int(event.record['dateTime'] + event.record['interval'] * 120)
 
     def end_archive_period(self, _event):
@@ -2907,20 +2917,21 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
             if data:
                 archive_start = weeutil.weeutil.startOfInterval(data['dateTime'], self._archive_interval)
                 if archive_start < self.prev_archive_start:
-                    self.logger.error(14001, MQTTSubscribeDriver.msgX[14001].format(archive_start=archive_start,
-                                                                                    prev_archive_start=self.prev_archive_start,
-                                                                                    data=to_sorted_string(data)))
+                    self.logger.error(14001, MQTTSubscribeDriver.log_messages[14001].format(archive_start=archive_start,
+                                                                                            prev_archive_start=self.prev_archive_start,
+                                                                                            data=to_sorted_string(data)))
                 else:
                     self.last_loop_packet_ts = data['dateTime']
                     self.prev_archive_start = archive_start
                     self.logger.debug(11003,
-                                      MQTTSubscribeDriver.msgX[11003].format(queue_name=queue['name'],
-                                                                             dateTime=weeutil.weeutil.timestamp_to_string(data['dateTime']),
-                                                                             data=to_sorted_string(data)))
+                                      MQTTSubscribeDriver.log_messages[11003].format(queue_name=queue['name'],
+                                                                                     dateTime=weeutil.weeutil.timestamp_to_string(
+                                                                                         data['dateTime']),
+                                                                                     data=to_sorted_string(data)))
                     yield data
 
     def _handle_empty_queue(self):
-        self.logger.trace(10001, MQTTSubscribeDriver.msgX[10001])
+        self.logger.trace(10001, MQTTSubscribeDriver.log_messages[10001])
         if self.max_loop_interval:
             now = int(time.time() + 0.5)
             start_loop_period_ts = weeutil.weeutil.startOfInterval(now, self.max_loop_interval)
@@ -2931,9 +2942,9 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
                     data['MQTTSubscribe'] = None  # WeeWX accumulator requires at least one observation
                     data['usUnits'] = 1
                     self.last_loop_packet_ts = data['dateTime']
-                    self.logger.trace(10002,
-                                      MQTTSubscribeDriver.msgX[10002].format(dateTime=weeutil.weeutil.timestamp_to_string(data['dateTime']),
-                                                                             data=to_sorted_string(data)))
+                    self.logger.trace(10002, MQTTSubscribeDriver.log_messages[10002].format(
+                        dateTime=weeutil.weeutil.timestamp_to_string(data['dateTime']),
+                        data=to_sorted_string(data)))
                     return data
 
                 self.start_loop_period_ts = start_loop_period_ts
@@ -2944,14 +2955,15 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
     def genArchiveRecords(self, lastgood_ts):  # need to override parent
         """ Called to generate the archive records. """
         if not self.archive_topic:
-            self.logger.debug(11004, MQTTSubscribeDriver.msgX[11004])
+            self.logger.debug(11004, MQTTSubscribeDriver.log_messages[11004])
             raise NotImplementedError
 
         for data in self.subscriber.get_data(self.queue):
             if data:
-                self.logger.debug(11005, MQTTSubscribeDriver.msgX[11005].format(archive_topic=self.archive_topic,
-                                                                                dateTime=weeutil.weeutil.timestamp_to_string(data['dateTime']),
-                                                                                data=to_sorted_string(data)))
+                self.logger.debug(11005, MQTTSubscribeDriver.log_messages[11005].format(archive_topic=self.archive_topic,
+                                                                                        dateTime=weeutil.weeutil.timestamp_to_string(
+                                                                                            data['dateTime']),
+                                                                                        data=to_sorted_string(data)))
                 if lastgood_ts is None or data['dateTime'] > lastgood_ts:
                     yield data
             else:
@@ -3193,7 +3205,7 @@ class MQTTSubscribeConfiguration():
             if remove_item in current_section:
                 del current_section[remove_item]
             else:
-                raise ValueError(MQTTSubscribeDriver.msgX[19001].format(remove_item=remove_item))
+                raise ValueError(MQTTSubscribeDriver.log_messages[19001].format(remove_item=remove_item))
 
     @property
     def default_stanza(self):
@@ -3392,7 +3404,7 @@ class Parser():
 
         topics_dict = self.config_dict.get('topics', None)
         if topics_dict is None:
-            raise ValueError(MQTTSubscribeDriver.msgX[19002])
+            raise ValueError(MQTTSubscribeDriver.log_messages[19002])
 
         self._validate()
 
