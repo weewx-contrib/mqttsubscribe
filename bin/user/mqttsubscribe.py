@@ -3769,12 +3769,7 @@ For more information see, https://weewx-mqtt.github.io/subscribe/configurator-mo
                 self._check_mutually_exclusive_options(options.enable, 'enable', options, parser)
             self._check_mutually_exclusive_options(options.no_backup, 'no-backup', options, parser)
 
-        if options.type == 'service':
-            self.section = 'MQTTSubscribeService'
-        elif options.type == 'driver':
-            self.section = 'MQTTSubscribeDriver'
-        else:
-            self.section = None
+        self.section = Configurator._get_section(options.type)
 
         self.config_spec = configobj.ConfigObj(CONFIG_SPEC_TEXT.splitlines())
 
@@ -3795,6 +3790,15 @@ For more information see, https://weewx-mqtt.github.io/subscribe/configurator-mo
             self.no_backup = options.no_backup
 
     @staticmethod
+    def _get_section(config_type):
+        ''' Map the configure subcommand type to the configuration section name. '''
+        if config_type == 'service':
+            return 'MQTTSubscribeService'
+        if config_type == 'driver':
+            return 'MQTTSubscribeDriver'
+        return None
+
+    @staticmethod
     def _check_mutually_exclusive_options(option, option_name, options, parser):
         if option:
             if options.export:
@@ -3810,6 +3814,21 @@ For more information see, https://weewx-mqtt.github.io/subscribe/configurator-mo
             self.config_dict = configobj.ConfigObj(config_path, encoding='utf-8', file_error=True)
             self.output_path = config_path
 
+        config_input = self._select_action(options)
+
+        if options.type == 'service' and options.enable is not None:
+            self.enable = to_bool(options.enable)
+            if self.config_output_path is None:
+                self.config_output_path = os.path.abspath(options.conf)
+
+        if options.output:
+            self.config_output_path = os.path.abspath(options.output)
+
+        if config_input:
+            self.config_input_dict = self._load_config_input(parser, options, config_input)
+
+    def _select_action(self, options):
+        ''' Select the configure action from the options. Returns the input configuration, if any. '''
         config_input = None
         if options.add_from:
             self.action = '--add-from'
@@ -3838,26 +3857,20 @@ For more information see, https://weewx-mqtt.github.io/subscribe/configurator-mo
             config_input = options.update_from
             self.config_output_path = os.path.abspath(options.conf)
 
-        if options.type == 'service' and options.enable is not None:
-            self.enable = to_bool(options.enable)
-            if self.config_output_path is None:
-                self.config_output_path = os.path.abspath(options.conf)
+        return config_input
 
-        if options.output:
-            self.config_output_path = os.path.abspath(options.output)
+    def _load_config_input(self, parser, options, config_input):
+        ''' Load the configuration that is the input to the action. '''
+        config_input_path = os.path.abspath(config_input)
+        config_input_dict = configobj.ConfigObj(config_input_path, encoding='utf-8', file_error=True)
+        if options.top_level:
+            if len(config_input_dict.sections) > 1:
+                parser.error(f"When specifying '--top-level, only one top level section is allowed. Found {config_input_dict.sections}")
+            return weeutil.config.deep_copy(config_input_dict[config_input_dict.sections[0]])
 
-        if config_input:
-            config_input_path = os.path.abspath(config_input)
-            config_input_dict = configobj.ConfigObj(config_input_path, encoding='utf-8', file_error=True)
-            if options.top_level:
-                if len(config_input_dict.sections) > 1:
-                    parser.error(f"When specifying '--top-level, only one top level section is allowed. Found {config_input_dict.sections}")
-                self.config_input_dict = weeutil.config.deep_copy(config_input_dict[config_input_dict.sections[0]])
-            else:
-                self.config_input_dict = weeutil.config.deep_copy(config_input_dict[self.section])
+        return weeutil.config.deep_copy(config_input_dict[self.section])
 
     def run(self):
-        # pylint: disable=too-many-branches
         ''' Update the configuration. '''
         if self.action == '--validate':
             self._validate()
@@ -3868,25 +3881,33 @@ For more information see, https://weewx-mqtt.github.io/subscribe/configurator-mo
             default_configuration.filename = self.config_output_path
             default_configuration.write()
         elif self.action == '--export':
-            export_dict = {}
-            export_dict[self.section] = self.config_dict[self.section]
-            export_config = configobj.ConfigObj(export_dict)
-            export_config.filename = self.config_output_path
-            export_config.write()
+            self._export()
         elif self.action == '--print-configspec':
             self.config_spec.filename = self.config_output_path
             self.config_spec.write()
         else:
-            self._update()
+            self._update_config()
 
-            if self.section == 'MQTTSubscribeService' and self.enable is not None:
-                self.config_dict[self.section]['enable'] = self.enable
+    def _export(self):
+        ''' Export the configuration. '''
+        export_dict = {}
+        export_dict[self.section] = self.config_dict[self.section]
+        export_config = configobj.ConfigObj(export_dict)
+        export_config.filename = self.config_output_path
+        export_config.write()
 
-            if os.path.exists(self.config_output_path) and not self.no_backup:
-                _ = weeutil.weeutil.move_with_timestamp(self.config_output_path)
+    def _update_config(self):
+        ''' Apply the action and write the updated configuration. '''
+        self._update()
 
-            self.config_dict.filename = self.config_output_path
-            self.config_dict.write()
+        if self.section == 'MQTTSubscribeService' and self.enable is not None:
+            self.config_dict[self.section]['enable'] = self.enable
+
+        if os.path.exists(self.config_output_path) and not self.no_backup:
+            _ = weeutil.weeutil.move_with_timestamp(self.config_output_path)
+
+        self.config_dict.filename = self.config_output_path
+        self.config_dict.write()
 
     def _update(self):
         if self.action == '--add-from':
