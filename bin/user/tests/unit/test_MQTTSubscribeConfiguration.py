@@ -195,13 +195,13 @@ class TestValidateTopicsSection(unittest.TestCase):
         SUT._validate_topics_section(topic_name,
                                      f'{section}-topics-',
                                      configobj.ConfigObj(config_text.splitlines())['topics'][topic_name],
-                                     configobj.ConfigObj(CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
-                                     MQTTSubscribeConfiguration.deprecated_options
+                                     section_configspec=configobj.ConfigObj(CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
+                                     section_deprecated_options=MQTTSubscribeConfiguration.deprecated_options
                                      .get('MQTTSubscribe', {})
                                      .get('topics', {})
                                      .get('REPLACE_ME', {}),
-                                     error_msgs,
-                                     warn_msgs)
+                                     error_msgs=error_msgs,
+                                     warn_msgs=warn_msgs)
 
         self.assertEqual(warn_msgs, [])
         self.assertEqual(error_msgs, [])
@@ -226,13 +226,13 @@ class TestValidateTopicsSection(unittest.TestCase):
         SUT._validate_topics_section(topic_name,
                                      f'{section}-topics-',
                                      configobj.ConfigObj(config_text.splitlines())['topics'][topic_name],
-                                     configobj.ConfigObj(CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
-                                     MQTTSubscribeConfiguration.deprecated_options
+                                     section_configspec=configobj.ConfigObj(CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
+                                     section_deprecated_options=MQTTSubscribeConfiguration.deprecated_options
                                      .get('MQTTSubscribe', {})
                                      .get('topics', {})
                                      .get('REPLACE_ME', {}),
-                                     error_msgs,
-                                     warn_msgs)
+                                     error_msgs=error_msgs,
+                                     warn_msgs=warn_msgs)
 
         self.assertEqual(warn_msgs, [])
         self.assertEqual(error_msgs, [f"ERROR: Unknown option: MQTTSubscribeDriver-topics-{topic_name}-name"])
@@ -257,13 +257,13 @@ class TestValidateTopicsSection(unittest.TestCase):
         SUT._validate_topics_section(topic_name,
                                      f'{section}-topics-',
                                      configobj.ConfigObj(config_text.splitlines())['topics'][topic_name],
-                                     configobj.ConfigObj(CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
-                                     MQTTSubscribeConfiguration.deprecated_options
+                                     section_configspec=configobj.ConfigObj(CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
+                                     section_deprecated_options=MQTTSubscribeConfiguration.deprecated_options
                                      .get('MQTTSubscribe', {})
                                      .get('topics', {})
                                      .get('REPLACE_ME', {}),
-                                     error_msgs,
-                                     warn_msgs)
+                                     error_msgs=error_msgs,
+                                     warn_msgs=warn_msgs)
 
         self.assertEqual(warn_msgs, [])
         self.assertEqual(error_msgs, [])

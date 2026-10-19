@@ -1132,14 +1132,18 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
             )
             self.queues.append(single_queue_obj)
 
-        self._configure_topics(config, archive_topic, single_queue, single_queue_obj, default_message_dict, topic_defaults, field_defaults)
+        self._configure_topics(config, archive_topic, single_queue, single_queue_obj,
+                               default_message_dict=default_message_dict,
+                               topic_defaults=topic_defaults,
+                               field_defaults=field_defaults)
 
         self._add_collector_queue(topic_defaults)
 
         self.logger.debug(51002, TopicManager.msgX[51002].format(subscribed_topics=json.dumps(self.subscribed_topics, default=str)))
         self.logger.debug(51003, TopicManager.msgX[51003].format(cached_fields=self.cached_fields))
 
-    def _configure_topics(self, config, archive_topic, single_queue, single_queue_obj, default_message_dict, topic_defaults, field_defaults):
+    def _configure_topics(self, config, archive_topic, single_queue, single_queue_obj, *,
+                          default_message_dict, topic_defaults, field_defaults):
         # pylint: disable=too-many-arguments, too-many-locals
         for topic in config.sections:
             topic_dict = config.get(topic, {})
@@ -1175,7 +1179,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
             self.subscribed_topics[topic]['offset_format'] = topic_dict.get('offset_format', topic_defaults['offset_format'])
             self.subscribed_topics[topic]['fields_ignoring_msg_id'] = []
             self.subscribed_topics[topic]['fields'] = {}
-            self._setup_queue(archive_topic, single_queue, single_queue_obj, topic_defaults, topic, topic_dict)
+            self._setup_queue(archive_topic, single_queue, single_queue_obj, topic_defaults, topic, topic_dict=topic_dict)
 
             self.subscribed_topics[topic]['filters'] = {}
 
@@ -1197,7 +1201,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
             else:
                 self._configure_topic_as_field(field_defaults, topic, topic_dict)
 
-    def _setup_queue(self, archive_topic, single_queue, single_queue_obj, topic_defaults, topic, topic_dict):
+    def _setup_queue(self, archive_topic, single_queue, single_queue_obj, topic_defaults, topic, *, topic_dict):
         # pylint: disable=too-many-arguments
         if not single_queue or topic == archive_topic:
             queue = dict(
@@ -1828,21 +1832,21 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
         """ Get the MQTT callback. """
         return self.on_message_multi
 
-    def _flatten(self, fields, fields_ignore_default, delim, prefix, new_dict, old_dict):
+    def _flatten(self, fields, fields_ignore_default, delim, prefix, new_dict, *, old_dict):
         # pylint: disable=too-many-arguments
         if isinstance(old_dict, dict):
             for key, value in old_dict.items():
                 new_key = prefix + key
                 if isinstance(value, dict):
-                    self._flatten(fields, fields_ignore_default, delim, new_key + '_', new_dict, value)
+                    self._flatten(fields, fields_ignore_default, delim, new_key + '_', new_dict, old_dict=value)
                 elif isinstance(value, list):
-                    self._flatten_list(fields, fields_ignore_default, delim, prefix, new_key, value, new_dict)
+                    self._flatten_list(fields, fields_ignore_default, delim, prefix, new_key, value=value, new_dict=new_dict)
                 else:
                     new_dict[new_key] = value
         else:
-            self._flatten_list(fields, fields_ignore_default, delim, prefix, prefix[:-1], old_dict, new_dict)
+            self._flatten_list(fields, fields_ignore_default, delim, prefix, prefix[:-1], value=old_dict, new_dict=new_dict)
 
-    def _flatten_list(self, fields, fields_ignore_default, delim, prefix, new_key, value, new_dict):
+    def _flatten_list(self, fields, fields_ignore_default, delim, prefix, new_key, *, value, new_dict):
         # pylint: disable=too-many-arguments
         if new_key in fields and 'subfields' in fields[new_key]:
             if len(value) > len(fields[new_key]['subfields']):
@@ -1858,7 +1862,8 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
                 i = 0
                 for subvalue in value:
                     if isinstance(subvalue, (dict, list)):
-                        self._flatten(fields, fields_ignore_default, delim, prefix + fields[new_key]['subfields'][i] + '_', new_dict, subvalue)
+                        self._flatten(fields, fields_ignore_default, delim, prefix + fields[new_key]['subfields'][i] + '_',
+                                      new_dict, old_dict=subvalue)
                     else:
                         new_dict[prefix + fields[new_key]['subfields'][i]] = subvalue
                     i += 1
@@ -1929,7 +1934,7 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
             payload_str = msg.payload.decode('utf-8')
 
             data_flattened = {}
-            self._flatten(fields, fields_ignore_default, message_dict['flatten_delimiter'], '', data_flattened, json.loads(payload_str))
+            self._flatten(fields, fields_ignore_default, message_dict['flatten_delimiter'], '', data_flattened, old_dict=json.loads(payload_str))
 
             data_final = self._process_json_dict(msg, fields, fields_ignore_default, data_flattened)
 
@@ -2282,10 +2287,10 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         mqttsubscribe_configuration.validate("MQTTSubscribe",
                                              "",
                                              service_dict,
-                                             self.config_spec['MQTTSubscribe'],
-                                             MQTTSubscribeConfiguration.deprecated_options,
-                                             error_msgs,
-                                             warn_msgs)
+                                             section_configspec=self.config_spec['MQTTSubscribe'],
+                                             section_deprecated_options=MQTTSubscribeConfiguration.deprecated_options,
+                                             error_msgs=error_msgs,
+                                             warn_msgs=warn_msgs)
 
         for msg in warn_msgs:
             self.logger.info(32015, MQTTSubscriber.msgX[32015].format(msg=msg))
@@ -3158,7 +3163,7 @@ class MQTTSubscribeConfiguration():
         """ The default configuration stanza. """
         return '\n'.join(self.default_config.write())
 
-    def validate(self, parent, hierarchy, section, section_configspec, section_deprecated_options, error_msgs, warn_msgs):
+    def validate(self, parent, hierarchy, section, *, section_configspec, section_deprecated_options, error_msgs, warn_msgs):
         """ Validate a MQTTSubscribe configuration."""
         # pylint: disable=too-many-arguments, disable=too-many-branches
         hierarchy += f"{parent}-"
@@ -3168,9 +3173,17 @@ class MQTTSubscribeConfiguration():
                     self._log_deprecated_option(key, section_deprecated_options, error_msgs, warn_msgs)
                 continue
 
-            self._check_items(key, value, hierarchy, section_configspec, section_deprecated_options, error_msgs, warn_msgs)
+            self._check_items(key, value, hierarchy,
+                              section_configspec=section_configspec,
+                              section_deprecated_options=section_deprecated_options,
+                              error_msgs=error_msgs,
+                              warn_msgs=warn_msgs)
 
-        self._validate_sections(parent, hierarchy, section, section_configspec, section_deprecated_options, error_msgs, warn_msgs)
+        self._validate_sections(parent, hierarchy, section,
+                                section_configspec=section_configspec,
+                                section_deprecated_options=section_deprecated_options,
+                                error_msgs=error_msgs,
+                                warn_msgs=warn_msgs)
 
     @staticmethod
     def _log_deprecated_option(option, section_deprecated_options, error_msgs, warn_msgs):
@@ -3179,7 +3192,7 @@ class MQTTSubscribeConfiguration():
         else:
             error_msgs.append(section_deprecated_options[option]['deprecated_msg'])
 
-    def _check_items(self, key, value, hierarchy, section_configspec, section_deprecated_options, error_msgs, warn_msgs):
+    def _check_items(self, key, value, hierarchy, *, section_configspec, section_deprecated_options, error_msgs, warn_msgs):
         # pylint: disable=too-many-arguments
         if key not in section_configspec:
             if key in section_deprecated_options and 'deprecated_msg' in section_deprecated_options[key]:
@@ -3191,7 +3204,7 @@ class MQTTSubscribeConfiguration():
         elif key in section_deprecated_options and 'deprecated_msg' in section_deprecated_options[key]:
             self._log_deprecated_option(key, section_deprecated_options, error_msgs, warn_msgs)
 
-    def _validate_sections(self, parent, hierarchy, section, section_configspec, section_deprecated_options, error_msgs, warn_msgs):
+    def _validate_sections(self, parent, hierarchy, section, *, section_configspec, section_deprecated_options, error_msgs, warn_msgs):
         # pylint: disable=too-many-arguments
         for subsection in section.sections:
             if subsection == 'REPLACE_ME':
@@ -3200,61 +3213,63 @@ class MQTTSubscribeConfiguration():
                 self._validate_topics_section(subsection,
                                               hierarchy,
                                               section[subsection],
-                                              section_configspec["REPLACE_ME"],
-                                              section_deprecated_options.get("REPLACE_ME", {}),
-                                              error_msgs, warn_msgs)
+                                              section_configspec=section_configspec["REPLACE_ME"],
+                                              section_deprecated_options=section_deprecated_options.get("REPLACE_ME", {}),
+                                              error_msgs=error_msgs,
+                                              warn_msgs=warn_msgs)
             elif subsection not in section_configspec.sections and parent == 'subfields':
+                subfield_deprecated_options = section_deprecated_options.get('MQTTSubscribe', {}) \
+                    .get('topics', {}) \
+                    .get('REPLACE_ME', {}) \
+                    .get('REPLACE_ME', {})
                 self.validate(subsection,
                               hierarchy,
                               section[subsection],
-                              self.config_spec['MQTTSubscribe']['topics']['REPLACE_ME']["REPLACE_ME"],
-                              section_deprecated_options.get('MQTTSubscribe', {})
-                                                        .get('topics', {})
-                                                        .get('REPLACE_ME', {})
-                                                        .get('REPLACE_ME', {}),
-                              error_msgs,
-                              warn_msgs
+                              section_configspec=self.config_spec['MQTTSubscribe']['topics']['REPLACE_ME']["REPLACE_ME"],
+                              section_deprecated_options=subfield_deprecated_options,
+                              error_msgs=error_msgs,
+                              warn_msgs=warn_msgs
                               )
             elif subsection not in section_configspec.sections:
                 if "REPLACE_ME" in section_configspec.sections:
                     self.validate(subsection,
                                   hierarchy,
                                   section[subsection],
-                                  section_configspec["REPLACE_ME"],
-                                  section_deprecated_options.get("REPLACE_ME", {}),
-                                  error_msgs,
-                                  warn_msgs)
+                                  section_configspec=section_configspec["REPLACE_ME"],
+                                  section_deprecated_options=section_deprecated_options.get("REPLACE_ME", {}),
+                                  error_msgs=error_msgs,
+                                  warn_msgs=warn_msgs)
                 elif subsection not in section_deprecated_options:
                     error_msgs.append(f"ERROR: Unknown option: {hierarchy}{subsection}")
             else:
                 self.validate(subsection,
                               hierarchy,
                               section[subsection],
-                              section_configspec[subsection],
-                              section_deprecated_options.get(subsection, {}),
-                              error_msgs,
-                              warn_msgs)
+                              section_configspec=section_configspec[subsection],
+                              section_deprecated_options=section_deprecated_options.get(subsection, {}),
+                              error_msgs=error_msgs,
+                              warn_msgs=warn_msgs)
 
-    def _validate_topics_section(self, parent, hierarchy, section, section_configspec, section_deprecated_options, error_msgs, warn_msgs):
+    def _validate_topics_section(self, parent, hierarchy, section, *, section_configspec, section_deprecated_options, error_msgs, warn_msgs):
         # pylint: disable=too-many-arguments
         # Some fields are configured
         if (len(section.sections) > 1) or (len(section.sections) == 1 and 'message' not in section.sections):
             self.validate(parent,
                           hierarchy,
                           section,
-                          section_configspec,
-                          section_deprecated_options,
-                          error_msgs,
-                          warn_msgs)
+                          section_configspec=section_configspec,
+                          section_deprecated_options=section_deprecated_options,
+                          error_msgs=error_msgs,
+                          warn_msgs=warn_msgs)
         # No fields configured, so the topic might be configured as a field.
         else:
             self.validate(parent,
                           hierarchy,
                           section,
-                          self.topic_as_field_config_spec,
-                          self.topic_as_field_deprecated_options,
-                          error_msgs,
-                          warn_msgs)
+                          section_configspec=self.topic_as_field_config_spec,
+                          section_deprecated_options=self.topic_as_field_deprecated_options,
+                          error_msgs=error_msgs,
+                          warn_msgs=warn_msgs)
 class Parser():
     """ Parse a MQTT message that is read from a file. """
     description = '''
@@ -3349,10 +3364,10 @@ class Parser():
         mqttsubscribe_configuration.validate(self.section,
                                              "",
                                              self.config_dict,
-                                             config_spec['MQTTSubscribe'],
-                                             MQTTSubscribeConfiguration.deprecated_options,
-                                             error_msgs,
-                                             warn_msgs)
+                                             section_configspec=config_spec['MQTTSubscribe'],
+                                             section_deprecated_options=MQTTSubscribeConfiguration.deprecated_options,
+                                             error_msgs=error_msgs,
+                                             warn_msgs=warn_msgs)
         for msg in warn_msgs:
             print(msg)
         for msg in error_msgs:
@@ -3884,10 +3899,10 @@ For more information see, https://weewx-mqtt.github.io/subscribe/configurator-mo
         mqttsubscribe_configuration.validate(self.section,
                                              "",
                                              self.config_input_dict,
-                                             self.config_spec['MQTTSubscribe'],
-                                             MQTTSubscribeConfiguration.deprecated_options,
-                                             error_msgs,
-                                             warn_msgs)
+                                             section_configspec=self.config_spec['MQTTSubscribe'],
+                                             section_deprecated_options=MQTTSubscribeConfiguration.deprecated_options,
+                                             error_msgs=error_msgs,
+                                             warn_msgs=warn_msgs)
         for msg in warn_msgs:
             print(msg)
         for msg in error_msgs:
