@@ -1868,10 +1868,7 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
         if new_key in fields and 'subfields' in fields[new_key]:
             if self._check_subfield_count(new_key, value, fields):
                 self._flatten_subfields(fields, fields_ignore_default, delim, prefix, new_key, value=value, new_dict=new_dict)
-        elif new_key not in fields and fields_ignore_default:
-            pass
-        else:
-            # if not fields.get(lookup_key, {}).get('ignore', fields_ignore_default):
+        elif new_key in fields or not fields_ignore_default:
             self.logger.error(44003, MessageCallbackProvider.log_messages[44003].format(new_key=new_key, value=value))
 
     def _check_subfield_count(self, new_key, value, fields):
